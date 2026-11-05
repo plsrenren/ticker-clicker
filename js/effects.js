@@ -334,36 +334,53 @@ TC.effects = (() => {
     wrapEl.style.transform = `translate(${(Math.random() - 0.5) * 2 * m}px, ${(Math.random() - 0.5) * 2 * m}px)`;
   }
 
-  // Charge ring around the finger: fills clockwise over the charge, then pulses hot when full
+  // Charge target line: while you hold, a dashed line climbs the chart to where the price will land
+  // when you let go (+$ tag on the right). At full charge it turns solid white and pulses, tagged MAX.
   let chargeClock = 0;
   function drawCharge(g) {
     const c = api.charge;
     if (!c) return;
     chargeClock += 1 / 60;
-    const r = 30 + c.p * 14;
-    const color = c.max ? C.core : C.line;
+    const t = chargeClock;
+    const tip = TC.chart.tip(), b = TC.chart.bounds();
+    const price = TC.state.data.basePrice || 1;
+    const shots = c.max ? 15 : Math.round(12 * c.p);
+    const add = shots * TC.market.perClick();
+    // the y-axis starts at $0, so screen height is proportional to price
+    const y = Math.max(b.t, b.b - (b.b - tip.y) * (price + add) / price);
     g.save();
-    g.lineCap = "round";
-    // track
-    g.strokeStyle = C.line + "33";
-    g.lineWidth = 4;
-    g.beginPath(); g.arc(c.x, c.y, r, 0, Math.PI * 2); g.stroke();
-    // fill
-    g.strokeStyle = color;
+    // the line
+    g.strokeStyle = c.max ? C.core : C.line;
     g.shadowColor = C.line;
-    g.shadowBlur = (c.max ? 22 + 10 * Math.sin(chargeClock * 18) : 10) * glow();
-    g.lineWidth = c.max ? 6 : 4;
-    g.beginPath(); g.arc(c.x, c.y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * c.p); g.stroke();
-    if (c.max) {
-      g.globalAlpha = 0.25 + 0.15 * Math.sin(chargeClock * 18);
-      g.fillStyle = C.line;
-      g.beginPath(); g.arc(c.x, c.y, r - 6, 0, Math.PI * 2); g.fill();
-      g.globalAlpha = 1;
-      g.font = '800 13px "Bricolage Grotesque", sans-serif';
-      g.textAlign = "center"; g.textBaseline = "middle";
-      g.fillStyle = C.core;
-      g.fillText("MAX", c.x, c.y - r - 14);
+    g.shadowBlur = (c.max ? 20 + 8 * Math.sin(t * 16) : 8) * glow();
+    g.lineWidth = c.max ? 2.5 : 1.5;
+    g.setLineDash(c.max ? [] : [6, 6]);
+    g.lineDashOffset = -t * 30;
+    g.beginPath(); g.moveTo(b.l, y); g.lineTo(b.r, y); g.stroke();
+    g.setLineDash([]);
+    // a glowing column from the price tip up to the target
+    if (tip.y > y) {
+      const grad = g.createLinearGradient(0, tip.y, 0, y);
+      grad.addColorStop(0, C.line + "00");
+      grad.addColorStop(1, c.max ? C.core + "80" : C.line + "59");
+      g.fillStyle = grad;
+      g.shadowBlur = 0;
+      g.fillRect(tip.x - 5, y, 10, tip.y - y);
     }
+    // tag
+    const label = (c.max ? "MAX  " : "") + "+" + TC.format.money(add);
+    g.font = '700 13px "IBM Plex Mono", monospace';
+    const lw = g.measureText(label).width + 16;
+    const lx = b.r - lw - 8, ly = Math.max(b.t + 2, y - 24);
+    g.fillStyle = c.max ? C.core : C.line;
+    g.shadowBlur = (c.max ? 14 : 0) * glow();
+    g.beginPath();
+    if (g.roundRect) g.roundRect(lx, ly, lw, 20, 5); else g.rect(lx, ly, lw, 20);
+    g.fill();
+    g.shadowBlur = 0;
+    g.fillStyle = "#030605";
+    g.textAlign = "left"; g.textBaseline = "middle";
+    g.fillText(label, lx + 8, ly + 10);
     g.restore();
   }
 
@@ -572,8 +589,9 @@ TC.effects = (() => {
     TC.events.on("dipStake", ({ shares, discount }) => {
       api.spawn("floatText", { x: w / 2 - 70, y: h * 0.4, text: "+" + +(shares / TC.config.sharesOutstanding * 100).toFixed(2) + "% STAKE · " + Math.round(discount * 100) + "% OFF", color: C.up, size: 20, life: 1.6 });
     });
-    TC.events.on("chargeMax", ({ x, y }) => {
-      api.spawn("ring", { x, y, color: C.core, max: 110, life: 0.5 });
+    TC.events.on("chargeMax", () => {
+      const tip = TC.chart.tip();
+      api.spawn("ring", { x: tip.x, y: tip.y, color: C.core, max: 110, life: 0.5 });
       api.spawn("vignette", { color: C.up, life: 0.4, strength: 0.35 }, 2);
       shake(2, 0.15);
     });
