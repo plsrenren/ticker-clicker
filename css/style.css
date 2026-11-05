@@ -763,3 +763,17 @@ body {
 .stake-row span:last-child { margin-left: auto; color: var(--muted); }
 .stake-btn { padding: 9px 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--line) 50%, transparent); background: color-mix(in srgb, var(--line) 10%, transparent); color: var(--line); font: 600 13px var(--font-data); cursor: pointer; }
 .stake-btn:disabled { opacity: 0.45; cursor: default; }
+
+/* Status chips never push the header around: one fixed-height line. The season chip stays
+   pinned on the right; extra chips overflow to the left (swipe to see them), fading out. */
+.cap-row { align-items: center; height: 22px; overflow: hidden; }
+.chips {
+  flex: 1 1 auto; min-width: 0; flex-wrap: nowrap; flex-direction: row-reverse; justify-content: flex-start;
+  overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 18px); mask-image: linear-gradient(to right, transparent 0, #000 18px);
+}
+.chips::-webkit-scrollbar { display: none; }
+.chips > *, .debuffs, .debuff-chip, .season-chip, .rsi-chip { flex: none; white-space: nowrap; }
+.debuffs { flex-wrap: nowrap; flex-direction: row-reverse; }
+.cap-label { padding-top: 0; flex: none; }
+.chips .season-chip { order: -2; } .chips .debuffs { order: -1; }
