@@ -93,7 +93,7 @@ TC.hype = (() => {
     activate(id) {
       const m = moves.find((x) => x.id === id);
       if (!m || !st().listed || status(m).state !== "ready") return false;
-      readyAt[id] = st().clock + m.cooldown;
+      readyAt[id] = st().clock + m.cooldown * (TC.market.has("agency") ? 0.75 : 1);
       const info = m.run();
       TC.events.emit("hype", { id, ...(info || {}) });
       return true;

@@ -23,6 +23,15 @@ TC.dividends = (() => {
     if (!r || s.basePrice < cfg.sell.minPrice) return;
     const drop = s.basePrice * r;
     const cash = drop * TC.market.cashPerDollar() * CASH_X;
+    if (TC.market.has("drip")) {
+      // Reinvest: buy stake at the current price, no fee, up to the 25% cap (leftover pays as cash)
+      const shares = Math.min(cash / s.basePrice, Math.max(0, cfg.stake.max - s.shares));
+      s.shares += shares;
+      s.cash += cash - shares * s.basePrice;
+      TC.market.shift(-r, "dividend");
+      TC.events.emit("dividend", { cash: 0, shares, pct: r });
+      return;
+    }
     s.cash += cash;
     TC.market.shift(-r, "dividend");
     TC.events.emit("dividend", { cash, pct: r });

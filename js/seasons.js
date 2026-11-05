@@ -137,7 +137,10 @@ TC.seasons = (() => {
     stackMult: () => (id ? cur().stack : 1),
     moveAmp: () => (id ? cur().amp || 1 : 1),
     // Per-buyer multiplier (bear market nerfs retail traders and finfluencers)
-    genMult: (gid) => (id && cur().gen && cur().gen[gid] != null ? cur().gen[gid] : 1),
+    genMult: (gid) => {
+      if (!id || !cur().gen || cur().gen[gid] == null) return 1;
+      return TC.market.has("diamond") ? Math.max(0.5, cur().gen[gid]) : cur().gen[gid];
+    },
     // Weighted random news type for this season
     pickNews(types) {
       if (!id) return types[Math.floor(Math.random() * types.length)];

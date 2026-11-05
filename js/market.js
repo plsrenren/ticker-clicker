@@ -24,7 +24,8 @@ TC.market = (() => {
     const base = Math.max(0.6, 2.6 / Math.sqrt(n));
     return base * (0.55 + Math.random() * 0.9);
   }
-  let earnRate = 0;    // smoothed cash per second, for the UI
+  let earnRate = 0;
+  let algoT = 1;       // Algo Buyback Desk check timer    // smoothed cash per second, for the UI
 
   function upgradeProduct(kind) {
     if (TC.debuffs && TC.debuffs.active("poach")) return 1; // exec poached: upgrades off
@@ -32,6 +33,8 @@ TC.market = (() => {
   }
 
   const api = {
+    // Owns a perk upgrade (poached execs switch upgrades off)
+    has: (id) => !!st().upgrades[id] && !(TC.debuffs && TC.debuffs.active("poach")),
     generatorCost(g) {
       return Math.ceil(g.cost * Math.pow(cfg.costGrowth, st().owned[g.id] || 0));
     },
@@ -295,6 +298,10 @@ TC.market = (() => {
           api.push(amount);
           TC.events.emit("order", { amount, id: g.id, name: g.name });
         }
+      }
+      if (api.has("algobb") && (algoT -= dt) <= 0) {
+        algoT = 1;
+        if (api.buybackBear() && api.buybackDiscount() >= 0.25 && api.canBuyback()) api.buyback();
       }
       if (dt > 0) {
         const k = Math.min(1, dt / 1.5);

@@ -91,15 +91,22 @@ TC.config = {
   // kind "mult": multiplies price per tap.   kind "cpsPct": each tap adds a % of buyers' per-second volume.
   // kind "gen": multiplies all buyers.        kind "yield": multiplies cash per $1 of new highs.
   // kind "dividend": pays cash every 30s and drops the price by value (see dividends.js).
+  // kind "perk": a rule change, checked by id with TC.market.has(id) where it applies.
   upgrades: [
     { id: "market",  name: "Market Orders",   desc: "Buys fill instantly. 2x per buy.",       cost: 50,      kind: "mult",   value: 2 },
     { id: "div1",    name: "Investor Hype",   desc: "50% more cash from every new high.",       cost: 250,     kind: "yield",  value: 1.5 },
     { id: "divq",    name: "Quarterly Dividend", desc: "Every 30s: pays cash, price drops 1%. Toggle it on the desk.", cost: 500, kind: "dividend", value: 0.01 },
+    { id: "agency",  name: "Hype Agency",     desc: "Hype moves come back 25% sooner.",       cost: 600,     kind: "perk",   short: "hype cooldowns −25%" },
+    { id: "prfirm",  name: "PR Firm",         desc: "Bad headlines hit 30% softer, and each defending tap saves more.", cost: 1200, kind: "perk", short: "headlines −30%, taps save more" },
+    { id: "drip",    name: "Dividend Reinvestment", desc: "Dividends buy back stake instead of paying cash. No fee.", cost: 1500, kind: "perk", short: "dividends → stake, no fee" },
     { id: "margin",  name: "Margin Account",  desc: "Borrowed money buys more. 2x per buy.",  cost: 500,     kind: "mult",   value: 2 },
     { id: "beat",    name: "Earnings Beat",   desc: "Every buyer buys 2x as much.",           cost: 2500,    kind: "gen",    value: 2 },
+    { id: "intel",   name: "Short Intel",     desc: "Short attacks and split votes need 20% fewer taps.", cost: 3000, kind: "perk", short: "tap events −20% taps" },
     { id: "options", name: "Call Options",    desc: "Leverage on every order. 3x per buy.",   cost: 6000,    kind: "mult",   value: 3 },
+    { id: "diamond", name: "Diamond Hands Club", desc: "Retail traders and finfluencers keep half their buying in bear markets.", cost: 8000, kind: "perk", short: "bear: retail keeps 50%" },
     { id: "div2",    name: "Analyst Upgrade", desc: "2x cash from every new high.",           cost: 20000,   kind: "yield",  value: 2 },
     { id: "algo",    name: "Algo Execution",  desc: "Each buy adds 2% of buy volume.",        cost: 40000,   kind: "cpsPct", value: 0.02 },
+    { id: "algobb",  name: "Algo Buyback Desk", desc: "In a bear, auto-buys back a stake chunk whenever the discount passes 25% and you have the cash.", cost: 25000, kind: "perk", short: "auto bear buybacks" },
     { id: "squeeze", name: "Short Squeeze",   desc: "Every buyer buys 3x as much.",           cost: 150000,  kind: "gen",    value: 3 },
     { id: "divA",    name: "Dividend Aristocrat", desc: "Dividends pay out 1.5% more of the price each time.", cost: 300000, kind: "dividend", value: 0.015 },
     { id: "dark",    name: "Dark Pool Access", desc: "Hidden size. 5x per buy.",               cost: 500000,  kind: "mult",   value: 5 },

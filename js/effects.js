@@ -619,9 +619,10 @@ TC.effects = (() => {
       }
       api.spawn("vignette", { color: C.up, life: 0.6, strength: 0.4 }, 2);
     });
-    TC.events.on("dividend", ({ cash }) => {
+    TC.events.on("dividend", ({ cash, shares }) => {
       const tip = TC.chart.tip();
-      api.spawn("floatText", { x: tip.x - 120, y: tip.y - 30, text: "DIVIDEND +" + TC.format.money(cash), color: C.up, size: 20, life: 1.6 });
+      const text = shares ? "DRIP +" + +(shares / TC.config.sharesOutstanding * 100).toFixed(3) + "% STAKE" : "DIVIDEND +" + TC.format.money(cash);
+      api.spawn("floatText", { x: tip.x - 120, y: tip.y - 30, text, color: C.up, size: 20, life: 1.6 });
       api.spawn("ring", { x: tip.x, y: tip.y, color: C.up, max: 70, life: 0.6 });
     });
     TC.events.on("fine", ({ amount }) => {

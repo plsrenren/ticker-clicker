@@ -87,14 +87,14 @@ TC.news = (() => {
     headline() {
       const T = 4, CH = 20;
       let t = 0, tick = 0, done = 0, applied = 0;
-      let remaining = mag(0.2, 0.4);
+      let remaining = mag(0.2, 0.4) * (TC.market.has("prfirm") ? 0.7 : 1);
       const full = remaining;
       return {
         start() {
           banner.show({ tag: "BREAKING", tone: "down", text: L("headline"), sub: L("headlineSub"), meter: { a: 0, b: 0 } });
           TC.events.emit("news", { type: "headline", tone: "down" });
         },
-        onTap() { remaining *= 0.965; },
+        onTap() { remaining *= TC.market.has("prfirm") ? 0.95 : 0.965; },
         update(dt) {
           t += dt; tick += dt;
           while (tick >= T / CH && done < CH) {
@@ -157,7 +157,7 @@ TC.news = (() => {
     // Short attack: out-tap the shorts before the bar fills.
     short() {
       const T = 6;
-      const need = Math.round(cfg.news.shortTaps);
+      const need = Math.round(cfg.news.shortTaps * (TC.market.has("intel") ? 0.8 : 1));
       let t = 0, taps = 0, resolved = false;
       return {
         start() {
@@ -196,7 +196,7 @@ TC.news = (() => {
     // and makes buyers 1.5x for 20s, because retail loves cheap shares. Failing dips the price a little.
     split() {
       const T = 6;
-      const need = Math.round(cfg.news.splitTaps);
+      const need = Math.round(cfg.news.splitTaps * (TC.market.has("intel") ? 0.8 : 1));
       let t = 0, taps = 0, resolved = false;
       return {
         start() {
