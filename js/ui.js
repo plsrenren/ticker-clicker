@@ -349,7 +349,9 @@ TC.ui = (() => {
       const bb = $("buyback");
       const full = st().shares + cfg.stake.buyback > cfg.stake.max;
       bb.disabled = !TC.market.canBuyback();
-      bb.textContent = full ? "Stake maxed at 25%" : "Buy back 0.25% · " + f.money(TC.market.buybackCost());
+      const off = TC.market.buybackDiscount();
+      bb.textContent = full ? "Stake maxed at 25%" : "Buy back 0.25% · " + f.money(TC.market.buybackCost()) + (off >= 0.01 ? " · BEAR " + Math.round(off * 100) + "% OFF" : "");
+      bb.dataset.bear = TC.market.buybackBear() && !full ? "1" : "";
       renderAchievements();
 
       // Badge: how many things you can buy right now

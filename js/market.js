@@ -67,7 +67,11 @@ TC.market = (() => {
     stakeValue: (price) => st().shares * (price ?? api.quote()),
     // Buybacks are priced at your record high (no discount for buying in a dip), plus a fee,
     // plus a premium that grows 10% per buyback and fades over a minute.
-    buybackCost: () => cfg.stake.buyback * Math.max(st().basePrice, st().bestPrice) * (1 + cfg.stake.fee + api.buybackHeat()),
+    // In a bear market buybacks are priced at the current (beaten-down) price instead of the record: buy low.
+    buybackBear: () => !!(TC.seasons && TC.seasons.current() === "bear"),
+    buybackPrice: () => (api.buybackBear() ? st().basePrice : Math.max(st().basePrice, st().bestPrice)),
+    buybackDiscount: () => (api.buybackBear() && st().bestPrice > 0 ? Math.max(0, 1 - st().basePrice / st().bestPrice) : 0),
+    buybackCost: () => cfg.stake.buyback * api.buybackPrice() * (1 + cfg.stake.fee + api.buybackHeat()),
     buybackHeat: () => Math.max(0, (st().buybackHeat || 0) - (st().clock - (st().buybackAt || 0)) * cfg.stake.heatFade),
     canBuyback: () => st().listed && st().basePrice > 0 && st().shares + cfg.stake.buyback <= cfg.stake.max && st().cash >= api.buybackCost(),
     // Discounted buyback that rides along with BUY THE DIP: at the current (dipped) price, no fee.
@@ -93,7 +97,10 @@ TC.market = (() => {
       s.shares += cfg.stake.buyback;
       s.buybackHeat = api.buybackHeat() + cfg.stake.heat;
       s.buybackAt = s.clock;
-      TC.events.emit("buyback", { cost, shares: cfg.stake.buyback });
+      // Insider buying: the founder buying in a bear calms the market (+3%, bear bleed paused 10s)
+      const insider = api.buybackBear();
+      if (insider) { api.shift(cfg.stake.insiderBump, "insider"); TC.seasons.calm(cfg.stake.insiderCalm); }
+      TC.events.emit("buyback", { cost, shares: cfg.stake.buyback, insider });
       return true;
     },
 

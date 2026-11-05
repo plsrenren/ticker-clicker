@@ -761,6 +761,7 @@ body {
 .stake-row span:last-child { margin-left: auto; color: var(--muted); }
 .stake-btn { padding: 9px 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--line) 50%, transparent); background: color-mix(in srgb, var(--line) 10%, transparent); color: var(--line); font: 600 13px var(--font-data); cursor: pointer; }
 .stake-btn:disabled { opacity: 0.45; cursor: default; }
+.stake-btn[data-bear="1"]:not(:disabled) { border-color: var(--up); background: color-mix(in srgb, var(--up) 18%, transparent); box-shadow: 0 0 14px color-mix(in srgb, var(--up) 35%, transparent); }
 
 /* Status chips never push the header around: one fixed-height line. The season chip stays
    pinned on the right; extra chips overflow to the left (swipe to see them), fading out. */

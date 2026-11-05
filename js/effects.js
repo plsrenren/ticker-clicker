@@ -537,8 +537,12 @@ TC.effects = (() => {
     TC.events.on("dipStake", ({ shares, discount }) => {
       api.spawn("floatText", { x: w / 2 - 70, y: h * 0.4, text: "+" + +(shares / TC.config.sharesOutstanding * 100).toFixed(2) + "% STAKE · " + Math.round(discount * 100) + "% OFF", color: C.up, size: 20, life: 1.6 });
     });
-    TC.events.on("buyback", ({ cost }) => {
+    TC.events.on("buyback", ({ cost, insider }) => {
       api.spawn("floatText", { x: w / 2 - 60, y: h * 0.4, text: "BUYBACK +0.25% STAKE", color: C.up, size: 22, life: 1.4 });
+      if (insider) {
+        api.spawn("floatText", { x: w / 2 - 60, y: h * 0.47, text: "INSIDER BUYING +3%", color: C.up, size: 18, life: 1.6 });
+        api.spawn("pulse", { color: C.up, speed: 220, width: 30, life: 1, strength: 1.2 });
+      }
       api.spawn("vignette", { color: C.up, life: 0.6, strength: 0.4 }, 2);
     });
     TC.events.on("dividend", ({ cash }) => {

@@ -30,6 +30,8 @@ TC.config = {
     heat: 0.05,          // ...plus 5% more per recent buyback...
     heatFade: 0.05 / 60, // ...fading 5% per minute
     max: 250000,         // can't own more than 25%
+    insiderBump: 0.03,   // bear market: a buyback is priced at the current price, bumps it 3%...
+    insiderCalm: 10,     // ...and pauses the bear bleed for 10s
     hostileShares: 10000, // losing a hostile bid sells 1% of the company (at most 20% of your shares) at the bid
     dipShares: 5000,     // BUY THE DIP also buys up to 0.5% of the company at the dip price (no fee), once per event
     econ: 2,             // save version of this economy (older saves get migrated in state.js)

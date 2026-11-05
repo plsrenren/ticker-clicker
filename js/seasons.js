@@ -43,6 +43,7 @@ TC.seasons = (() => {
   let next = null;
   let warned = false;
   let lastKey = "";
+  let calmUntil = -1; // insider buying pauses the bear bleed until this clock time
 
   // Bear-market backfires: your own trades can spook the market.
   //   SELL       35% chance of PANIC SELLING: another 10-20% drop over 1.5s
@@ -126,6 +127,8 @@ TC.seasons = (() => {
     },
     // Force a season by hand: TC.seasons.set("bear")
     set(newId) { if (SEASONS[newId]) enter(newId); },
+    // Pause the bear bleed for a few seconds (insider buying)
+    calm(secs) { calmUntil = st().clock + secs; },
 
     init() {
       TC.events.on("reset", () => { id = null; shock = null; delete document.documentElement.dataset.season; render(); });
@@ -168,7 +171,7 @@ TC.seasons = (() => {
       }
       // Bear markets slowly bleed (quietly: no trade feed spam)
       const bleed = cur().bleed;
-      if (bleed && !(TC.news && TC.news.active())) s.basePrice *= 1 - bleed * dt;
+      if (bleed && s.clock >= calmUntil && !(TC.news && TC.news.active())) s.basePrice *= 1 - bleed * dt;
       render();
     },
   };
