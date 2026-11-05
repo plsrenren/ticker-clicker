@@ -117,7 +117,7 @@ TC.ui = (() => {
   function bindTabs() {
     $("deskTabs").addEventListener("click", (e) => {
       const b = e.target.closest("[data-tab]");
-      if (b) setTab(b.dataset.tab);
+      if (b) { setTab(b.dataset.tab); markSeen(b.dataset.tab); }
     });
     setTab(st().settings.deskTab || "buyers");
     const paintQty = () => document.querySelectorAll("#buyQty button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.qty === qty())));
@@ -137,6 +137,19 @@ TC.ui = (() => {
     });
   }
 
+  // New-player hints: the Trading desk button and each desk tab shine until pressed once (settings.seen, kept forever)
+  const pressed = () => (st().settings.seen = st().settings.seen || {});
+  function paintShine() {
+    $("openDesk").dataset.shine = pressed().desk ? "" : "1";
+    document.querySelectorAll("#deskTabs [data-tab]").forEach((b) => { b.dataset.shine = pressed()[b.dataset.tab] ? "" : "1"; });
+  }
+  function markSeen(key) {
+    if (pressed()[key]) return;
+    pressed()[key] = true;
+    paintShine();
+    TC.state.save();
+  }
+
   function setDesk(open) {
     $("desk").classList.toggle("open", open);
     $("scrim").hidden = !open;
@@ -145,7 +158,9 @@ TC.ui = (() => {
 
   // Bottom sheet: open from the dock, close by tapping the scrim, Escape, or dragging the handle down.
   function bindDesk() {
-    $("openDesk").addEventListener("click", () => setDesk(true));
+    $("openDesk").addEventListener("click", () => { setDesk(true); markSeen("desk"); });
+    TC.events.on("reset", paintShine);
+    paintShine();
     $("scrim").addEventListener("pointerdown", (e) => { e.preventDefault(); setDesk(false); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") setDesk(false); });
 
