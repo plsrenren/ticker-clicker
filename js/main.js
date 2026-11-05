@@ -147,11 +147,19 @@ window.TC = window.TC || {};
     errorShown = true;
     const el = document.createElement("div");
     el.className = "err-banner";
-    el.textContent = "Something broke: " + (err && err.message ? err.message : String(err)) + " (the game kept running; tap to hide)";
+    const where = err && err.stack ? " @ " + (err.stack.split("\n").find((l) => /\/js\//.test(l)) || "").replace(/^.*\/js\//, "").replace(/\)$/, "").trim() : "";
+    el.textContent = "Something broke: " + (err && err.message ? err.message : String(err)) + where + " (the game kept running; tap to hide)";
     el.addEventListener("click", () => el.remove());
     document.body.appendChild(el);
   }
-  window.addEventListener("error", (e) => reportError(e.error || e.message));
+  // Only our own scripts count: ignore browser noise (ResizeObserver warnings, "Script error."
+  // from cross-origin or host-page scripts), which isn't a game problem.
+  window.addEventListener("error", (e) => {
+    const msg = String(e.message || "");
+    if (!e.filename || !/\/js\/[a-z]+\.js/.test(e.filename)) return;
+    if (/ResizeObserver|^Script error/i.test(msg)) return;
+    reportError(e.error || msg);
+  });
 
   function loop(now) {
     requestAnimationFrame(loop); // schedule first, so one bad frame can't stop the game
