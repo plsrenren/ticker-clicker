@@ -143,9 +143,8 @@ TC.effects = (() => {
     // A band of light that runs along the chart line from "now" back into the past.
     pulse({ color = C.line, speed = 150, width = 16, life = 1.6, strength = 1 }) {
       let t = 0;
-      const N = TC.config.historyPoints;
       return {
-        update(dt) { t += dt; return t < life && N - 1 - t * speed > -width; },
+        update(dt) { t += dt; return t < life && TC.chart.points().length - 1 - t * speed > -width; },
         draw(g) {
           const pts = TC.chart.points();
           if (pts.length < 2) return;

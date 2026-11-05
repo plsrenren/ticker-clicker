@@ -74,6 +74,34 @@ window.TC = window.TC || {};
     });
     wrap.addEventListener("contextmenu", (e) => e.preventDefault());
 
+    // Zoom the time window: two-finger pinch on touch, scroll wheel or trackpad pinch on desktop.
+    // Taps still buy; a pinch only zooms once the fingers actually spread or close.
+    const fingers = new Map();
+    let pinchDist = 0;
+    const dist = () => { const [a, b] = [...fingers.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+    wrap.addEventListener("pointerdown", (e) => {
+      if (e.pointerType !== "touch") return;
+      fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (fingers.size === 2) pinchDist = dist();
+    });
+    wrap.addEventListener("pointermove", (e) => {
+      if (!fingers.has(e.pointerId)) return;
+      fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (fingers.size !== 2 || !pinchDist) return;
+      const d = dist();
+      if (Math.abs(d - pinchDist) < 6) return;
+      TC.chart.zoomBy(pinchDist / d); // spread fingers = fewer seconds on screen = zoom in
+      pinchDist = d;
+    });
+    const lift = (e) => { fingers.delete(e.pointerId); if (fingers.size < 2) pinchDist = 0; };
+    wrap.addEventListener("pointerup", lift);
+    wrap.addEventListener("pointercancel", lift);
+    wrap.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+      TC.chart.zoomBy(Math.exp(dy * (e.ctrlKey ? 0.01 : 0.0015)));
+    }, { passive: false });
+
     $("sell").addEventListener("click", () => {
       if (TC.market.sell()) {
         try { navigator.vibrate && navigator.vibrate([20, 40, 30]); } catch (e) { /* not supported */ }

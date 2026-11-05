@@ -5,7 +5,9 @@ TC.config = {
   baseClick: 1,          // dollars added to the price per buy, before upgrades
   costGrowth: 1.15,      // each extra buyer of a kind costs 15% more
   sampleMs: 250,         // how often the chart records a point
-  historyPoints: 240,    // points kept on screen (240 x 250ms = 60s window)
+  historyPoints: 240,    // default visible window (240 x 250ms = 60s)
+  historyMax: 1440,      // samples kept for zooming out (1440 x 250ms = 6 minutes)
+  zoomMin: 40,           // most zoomed in: 40 samples = 10s
   wobble: 0.02,          // max ambient noise as a fraction of price, for a living line
   saveMs: 5000,
 

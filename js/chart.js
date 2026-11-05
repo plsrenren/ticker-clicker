@@ -4,6 +4,7 @@
 //   TC.chart.tip()       the newest point
 //   TC.chart.bounds()    plot rectangle {l, r, t, b, w, h}
 //   TC.chart.flash(kind) flashes the price tag ("up" or "down")
+//   TC.chart.zoomBy(f)   scale the visible time window (f < 1 zooms in); saved in settings.zoom
 window.TC = window.TC || {};
 
 TC.chart = (() => {
@@ -17,6 +18,11 @@ TC.chart = (() => {
   let yMax = 10;            // animated top of the y-axis
   let tagFlash = { kind: "up", t: 0 };
   const pad = { l: 10, r: 66, t: 18, b: 26 };
+  const MAX = cfg.historyMax || cfg.historyPoints;
+  let span = cfg.historyPoints; // visible samples (zoom level)
+  const clampSpan = (v) => Math.round(Math.max(cfg.zoomMin || 40, Math.min(MAX, v)));
+  // First history index that is (partly) on screen
+  const visStart = () => Math.max(0, history.length - span - 1);
   const C = {};
 
   function readColors() {
@@ -46,7 +52,7 @@ TC.chart = (() => {
   const plotW = () => w - pad.l - pad.r;
   const plotH = () => h - pad.t - pad.b;
   const yOf = (v) => pad.t + plotH() * (1 - v / yMax);
-  const xOf = (i, shift) => pad.l + plotW() * ((i - shift) / (cfg.historyPoints - 1));
+  const xOf = (i, shift) => pad.l + plotW() * ((i - (history.length - span) - shift) / (span - 1));
 
   function strokeLine() {
     ctx.beginPath();
@@ -56,14 +62,16 @@ TC.chart = (() => {
 
   // Group samples into candles; the newest candle is still forming.
   function drawCandles() {
-    const K = cfg.candleSamples;
+    const K = Math.max(2, Math.round(cfg.candleSamples * span / cfg.historyPoints));
     const n = history.length;
     const shift = sinceSample / cfg.sampleMs;
-    const step = plotW() / (cfg.historyPoints - 1);
+    const step = plotW() / (span - 1);
     const bodyW = Math.max(2, step * K * 0.62);
-    let open = history[0];
     // Align groups to the newest sample so the forming candle is always on the right
-    const first = (n - 1) % K;
+    let first = (n - 1) % K;
+    const vs = visStart();
+    while (first + K < vs) first += K;
+    let open = history[Math.max(0, first - K)];
     for (let end = first; end < n; end += K) {
       const start = Math.max(0, end - K + 1);
       let hi = -Infinity, lo = Infinity;
@@ -88,6 +96,8 @@ TC.chart = (() => {
 
   const api = {
     init(el) {
+      const saved = TC.state && TC.state.data.settings.zoom;
+      if (saved) span = clampSpan(saved);
       canvas = el;
       ctx = canvas.getContext("2d");
       readColors();
@@ -103,26 +113,34 @@ TC.chart = (() => {
 
     // Restore the visible line to a flat level (used after loading a save).
     fill(value) {
-      history = new Array(cfg.historyPoints).fill(value);
+      history = new Array(MAX).fill(value);
       hiArr = history.slice(); loArr = history.slice();
     },
 
     snapshot() { return history.slice(); },
     restore(arr) {
       if (!Array.isArray(arr) || !arr.length) return;
-      history = arr.slice(-cfg.historyPoints);
+      history = arr.slice(-MAX);
       hiArr = history.slice(); loArr = history.slice();
     },
 
     mode: () => mode,
     setMode(m) { mode = m === "candles" ? "candles" : "line"; },
 
+    span: () => span,
+    zoomBy(f) {
+      const next = clampSpan(span * f);
+      if (next === span) return;
+      span = next;
+      if (TC.state) TC.state.data.settings.zoom = span;
+    },
+
     update(dt, live) {
       sinceSample += dt * 1000;
       while (sinceSample >= cfg.sampleMs) {
         sinceSample -= cfg.sampleMs;
         history.push(live); hiArr.push(live); loArr.push(live);
-        if (history.length > cfg.historyPoints) { history.shift(); hiArr.shift(); loArr.shift(); }
+        if (history.length > MAX) { history.shift(); hiArr.shift(); loArr.shift(); }
       }
       const L = history.length - 1;
       history[L] = live;
@@ -130,7 +148,8 @@ TC.chart = (() => {
       if (live < loArr[L]) loArr[L] = live;
 
       // Ease the y-axis toward headroom above the visible peak.
-      const peak = Math.max(...(mode === "candles" ? hiArr : history), 1);
+      const vs = visStart();
+      const peak = Math.max(...(mode === "candles" ? hiArr : history).slice(vs), 1);
       const target = Math.max(10, peak * 1.25);
       const k = target > yMax ? 8 : 1.5; // grow fast, shrink slowly
       yMax += (target - yMax) * Math.min(1, k * dt);
@@ -140,7 +159,8 @@ TC.chart = (() => {
       // Screen points for this frame (smooth scroll between samples; newest point pinned to "now").
       const shift = sinceSample / cfg.sampleMs;
       const n = history.length;
-      pts = history.map((v, i) => ({ x: xOf(i, i === n - 1 ? 0 : shift), y: yOf(v) }));
+      pts = [];
+      for (let i = vs; i < n; i++) pts.push({ x: xOf(i, i === n - 1 ? 0 : shift), y: yOf(history[i]) });
     },
 
     points: () => pts,
@@ -170,11 +190,14 @@ TC.chart = (() => {
       // Time labels
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
-      const secs = (cfg.historyPoints * cfg.sampleMs) / 1000;
-      for (let s = 0; s <= secs; s += 15) {
+      const secs = (span * cfg.sampleMs) / 1000;
+      // About 4 labels whatever the zoom
+      const every = [2, 5, 10, 15, 30, 60, 90, 120].find((e) => secs / e <= 4.5) || 120;
+      const fmt = (s) => s === 0 ? "now" : s < 60 ? `-${s}s` : s % 60 ? `-${Math.floor(s / 60)}m${s % 60}s` : `-${s / 60}m`;
+      for (let s = 0; s <= secs + 0.01; s += every) {
         const x = pad.l + plotW() * (1 - s / secs);
         ctx.fillStyle = C.muted;
-        ctx.fillText(s === 0 ? "now" : `-${s}s`, x, h - pad.b + 8);
+        ctx.fillText(fmt(s), x, h - pad.b + 8);
       }
 
       ctx.save();
@@ -193,7 +216,7 @@ TC.chart = (() => {
       ctx.beginPath();
       ctx.moveTo(pts[0].x, yOf(0));
       for (const p of pts) ctx.lineTo(p.x, p.y);
-      ctx.lineTo(pts[n - 1].x, yOf(0));
+      ctx.lineTo(pts[pts.length - 1].x, yOf(0));
       ctx.closePath();
       ctx.fillStyle = grad;
       ctx.fill();
