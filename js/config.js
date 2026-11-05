@@ -25,7 +25,9 @@ TC.config = {
     cashOut: 0.05,       // cash per $1 of new high = this x your shares (5,000 at a 10% stake)
     floor: 20000,        // new highs stop selling shares below 2%; they still pay
     buyback: 2500,       // shares per buyback (0.25% of the company)
-    fee: 0.03,           // buybacks cost 3% over the price
+    fee: 0.03,           // buybacks cost 3% over your record price...
+    heat: 0.1,           // ...plus 10% more per recent buyback...
+    heatFade: 0.1 / 60,  // ...fading 10% per minute
     max: 250000,         // can't own more than 25%
     econ: 2,             // save version of this economy (older saves get migrated in state.js)
   },
@@ -35,7 +37,7 @@ TC.config = {
     fineChance: 0.65,    // ...this often...
     fine: 0.2,           // ...costing this share of your cash
     crashDrop: 0.3,      // selling into a crash drops the price this much instead of the usual drop
-    stakePct: 0.03,      // a sell dumps 3% of your shares at the price (x peak bonus / off-peak)
+    stakePct: 0.03,      // a sell dumps 3% of your shares (peak: bonus x 3% at full price; off-peak: 3% at half price)
     drop: 0.15,          // and knocks 15% off the price
     cooldown: 15,        // seconds before you can sell again
     minPrice: 5,         // can't sell a penny stock

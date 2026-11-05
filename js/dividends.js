@@ -1,7 +1,7 @@
 // Dividends: owned "dividend" upgrades pay out on a timer. Each payout hands you cash and the
 // price drops by the same share of its value (like a real ex-dividend drop), so it turns
 // market cap into steady cash. Switch it off from the desk when you're chasing a new record.
-//   Quarterly Dividend   every 30s: price -1%, pays 2x what that $ of growth would have earned
+//   Quarterly Dividend   every 30s: price -1%, pays 0.8x what that $ of growth would have earned (no shares sold)
 //   Dividend Aristocrat  adds another 1.5% per payout
 // Pays nothing below cfg.sell.minPrice. Setting lives in state.dividendsOn (run field).
 window.TC = window.TC || {};
@@ -11,7 +11,7 @@ TC.dividends = (() => {
   const st = () => TC.state.data;
   const $ = (id) => document.getElementById(id);
   const EVERY = 30;   // seconds between payouts
-  const CASH_X = 2;   // cash per $ of price paid out, relative to cash from new highs
+  const CASH_X = 0.8; // cash per $ of price paid out, relative to cash from new highs (below 1: a real tradeoff)
   let timer = EVERY;
   let lastKey = "";
 

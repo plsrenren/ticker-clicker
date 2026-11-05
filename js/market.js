@@ -64,13 +64,18 @@ TC.market = (() => {
     },
     stakePct: () => st().shares / cfg.sharesOutstanding,
     stakeValue: (price) => st().shares * (price ?? api.quote()),
-    buybackCost: () => cfg.stake.buyback * st().basePrice * (1 + cfg.stake.fee),
+    // Buybacks are priced at your record high (no discount for buying in a dip), plus a fee,
+    // plus a premium that grows 10% per buyback and fades over a minute.
+    buybackCost: () => cfg.stake.buyback * Math.max(st().basePrice, st().bestPrice) * (1 + cfg.stake.fee + api.buybackHeat()),
+    buybackHeat: () => Math.max(0, (st().buybackHeat || 0) - (st().clock - (st().buybackAt || 0)) * cfg.stake.heatFade),
     canBuyback: () => st().listed && st().basePrice > 0 && st().shares + cfg.stake.buyback <= cfg.stake.max && st().cash >= api.buybackCost(),
     buyback() {
       if (!api.canBuyback()) return false;
       const s = st(), cost = api.buybackCost();
       s.cash -= cost;
       s.shares += cfg.stake.buyback;
+      s.buybackHeat = api.buybackHeat() + cfg.stake.heat;
+      s.buybackAt = s.clock;
       TC.events.emit("buyback", { cost, shares: cfg.stake.buyback });
       return true;
     },
@@ -82,8 +87,16 @@ TC.market = (() => {
     marketCap: (price) => (price ?? api.quote()) * cfg.sharesOutstanding,
 
     // Cash a sell would pay right now, and the price after it.
+    // Peak sells are a bigger offering: hot demand lets you dump bonus x 3% of your shares at full price.
+    // Off-peak sells dump 3% at half price. Either way shares never sell above the price,
+    // so selling and buying back can't print money.
+    sellFrac() {
+      const b = api.sellBonus();
+      return Math.min(0.15, cfg.sell.stakePct * (b > 1 ? b : 1));
+    },
     sellValue() {
-      return st().shares * cfg.sell.stakePct * st().basePrice * api.sellBonus();
+      const b = api.sellBonus();
+      return st().shares * api.sellFrac() * st().basePrice * (b > 1 ? 1 : b);
     },
     // Peak-sell multiplier during market events (see trade.js)
     // 0.5x off-peak, 2-4x at an event peak
@@ -156,7 +169,7 @@ TC.market = (() => {
       const crash = api.sellingIntoCrash();
       const fined = api.fineRisk() && Math.random() < cfg.sell.fineChance;
       s.cash += cash;
-      s.shares *= 1 - cfg.sell.stakePct;
+      s.shares *= 1 - api.sellFrac();
       s.basePrice *= 1 - api.sellDrop();
       s.lastSellAt = s.clock;
       s.sells++;

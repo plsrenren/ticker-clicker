@@ -317,9 +317,10 @@ TC.ui = (() => {
       $("sellSub").textContent =
         st().basePrice < cfg.sell.minPrice ? "Reach " + f.money(cfg.sell.minPrice) + " to sell" :
         cd > 0 ? "Ready in " + Math.ceil(cd) + "s" :
-        bonus > 1 ? "PEAK " + bonus + "x · +" + f.money(TC.market.sellValue()) :
+        bonus > 1 ? "PEAK " + bonus + "x size · +" + f.money(TC.market.sellValue()) :
         TC.market.sellingIntoCrash() ? "+" + f.money(TC.market.sellValue()) + " · CRASH: price −" + Math.round(TC.market.sellDrop() * 100) + "%" :
         "+" + f.money(TC.market.sellValue()) + " · half price off-peak";
+      sb.title = "Sells " + (TC.market.sellFrac() * 100).toFixed(0) + "% of your shares";
 
       // Buy-the-dip button during event dips
       const dip = TC.trade.dipReady();
