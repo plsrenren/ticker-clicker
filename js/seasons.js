@@ -81,7 +81,10 @@ TC.seasons = (() => {
   function restore() {
     const sv = st().season;
     if (!sv || !SEASONS[sv.id]) return false;
-    id = sv.id; left = Math.min(sv.left, cur().dur[1]); // old saves may hold a longer season next = SEASONS[sv.next] ? sv.next : pickNext(); warned = !!sv.warned;
+    id = sv.id;
+    left = Math.min(sv.left, cur().dur[1]); // old saves may hold a longer season
+    next = SEASONS[sv.next] ? sv.next : pickNext();
+    warned = !!sv.warned;
     document.documentElement.dataset.season = id;
     return true;
   }
@@ -92,7 +95,7 @@ TC.seasons = (() => {
     if (!id) { if (lastKey) { el.hidden = true; lastKey = ""; } return; }
     const secs = Math.ceil(left);
     const text = left <= WARN
-      ? SEASONS[next].short + " IN " + secs + "s"
+      ? (SEASONS[next] || cur()).short + " IN " + secs + "s"
       : cur().short + " · " + Math.floor(secs / 60) + ":" + String(secs % 60).padStart(2, "0");
     const key = id + text + (left <= WARN);
     if (key === lastKey) return;
@@ -155,10 +158,11 @@ TC.seasons = (() => {
         render();
         return;
       }
+      if (!SEASONS[next]) next = pickNext();
       left -= dt;
       if (!warned && left <= WARN) {
         warned = true;
-        TC.events.emit("seasonWarn", { next, name: SEASONS[next].name });
+        TC.events.emit("seasonWarn", { next, name: (SEASONS[next] || cur()).name });
       }
       if (left <= 0) enter(next);
       persist();
