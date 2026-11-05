@@ -675,6 +675,26 @@ TC.news = (() => {
     },
   };
 
+  // Chains: some outcomes set off a follow-up event 1.8s later instead of the usual wait.
+  // Outcome (the last "news" type an event emitted) -> [next event, chance]. At most 2 follow-ups in a row.
+  const CHAIN = {
+    hacked: ["breach", 0.5],        // they got in, now the data leaks
+    exploitLose: ["hack", 0.45],    // the public exploit gets used
+    breachLose: ["headline", 0.35], // regulators and reporters pile on
+    miss: ["short", 0.4],           // shorts smell blood
+    shortwin: ["headline", 0.3],
+    headlineLost: ["short", 0.35],
+    opexDown: ["flash", 0.3],
+    sector: ["flash", 0.25],
+    beat: ["pump", 0.3],            // influencers jump on a beat
+    splitWin: ["pump", 0.35],       // cheap shares go viral
+    opexUp: ["pump", 0.25],
+    exploitWin: ["partner", 0.25],  // a rival trusts your security
+    breachWin: ["exploit", 0.2],    // a researcher pokes at the new defences
+  };
+  const CHAIN_MAX = 2, CHAIN_DELAY = 1.8;
+  let lastOutcome = null, chainDepth = 0, chain = null; // chain = { name, at }
+
   function schedule() {
     nextAt = st().clock + rand(cfg.news.minGap, cfg.news.maxGap) * (TC.seasons ? TC.seasons.gapMult() : 1);
   }
@@ -687,7 +707,8 @@ TC.news = (() => {
 
     init() {
       TC.events.on("buy", (e) => { if (!e.stack && active && active.onTap) active.onTap(); });
-      TC.events.on("reset", () => { active = null; nextAt = null; boostUntil = -1; splitBoostUntil = -1; banner.hide(); });
+      TC.events.on("news", (e) => { if (active) lastOutcome = e.type; });
+      TC.events.on("reset", () => { active = null; nextAt = null; chain = null; chainDepth = 0; boostUntil = -1; splitBoostUntil = -1; banner.hide(); });
     },
 
     trigger(name, opts) {
@@ -711,10 +732,25 @@ TC.news = (() => {
           active = null;
           banner.hide();
           schedule();
+          let out = lastOutcome;
+          if (done.type === "headline") out = (done.saved || 0) < 0.2 ? "headlineLost" : "";
+          const link = CHAIN[out];
+          if (link && chainDepth < CHAIN_MAX && s.basePrice >= cfg.news.minPrice && Math.random() < link[1]) {
+            chain = { name: link[0], at: s.clock + CHAIN_DELAY, from: out };
+          } else chainDepth = 0;
+          lastOutcome = null;
           TC.events.emit("newsEnd", { type: done.type, saved: done.saved || 0 });
         }
         return;
       }
+      if (chain && s.clock >= chain.at) {
+        const c = chain;
+        chain = null;
+        chainDepth++;
+        if (api.trigger(c.name)) TC.events.emit("chain", { depth: chainDepth, name: c.name, from: c.from });
+        return;
+      }
+      if (chain) return;
       if (s.basePrice < cfg.news.minPrice) return;
       // Index inclusion fires once per run at a $100B market cap
       if (!s.indexed && TC.market.marketCap(s.bestPrice) >= 1e11) { api.trigger("index"); return; }

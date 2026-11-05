@@ -561,6 +561,11 @@ TC.effects = (() => {
       api.spawn("floatText", { x: w / 2 - 30, y: h * 0.45, text: name.toUpperCase() + " IN 15s", color, size: 20, life: 1.8 });
     });
 
+    TC.events.on("chain", ({ depth }) => {
+      api.spawn("floatText", { x: w / 2 - 60, y: h * 0.38, text: depth > 1 ? "CHAIN REACTION x" + (depth + 1) : "CHAIN REACTION", color: FRENZY, size: 22, life: 1.6 });
+      api.spawn("pulse", { color: FRENZY, speed: 260, width: 30, life: 1, strength: 1.2 });
+      shake(3 + depth * 2, 0.3);
+    });
     TC.events.on("marginCall", () => {
       const tip = TC.chart.tip();
       api.spawn("floatText", { x: w / 2 - 40, y: h * 0.5, text: "MARGIN CALL", color: C.down, size: 30, life: 1.6 });
