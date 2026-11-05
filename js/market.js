@@ -65,7 +65,7 @@ TC.market = (() => {
     },
     stakePct: () => st().shares / cfg.sharesOutstanding,
     stakeValue: (price) => st().shares * (price ?? api.quote()),
-    // Buybacks are priced at your record high (no discount for buying in a dip), plus a fee,
+    // Buybacks are priced at your record high (no discount for buying in a dip) outside a bear market, plus a fee,
     // plus a premium that grows 10% per buyback and fades over a minute.
     // In a bear market buybacks are priced at the current (beaten-down) price instead of the record: buy low.
     buybackBear: () => !!(TC.seasons && TC.seasons.current() === "bear"),
