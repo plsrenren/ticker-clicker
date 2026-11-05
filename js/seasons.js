@@ -43,7 +43,27 @@ TC.seasons = (() => {
   let next = null;
   let warned = false;
   let lastKey = "";
-  let calmUntil = -1; // insider buying pauses the bear bleed until this clock time
+  let calmUntil = -1;
+  // Event outcomes can flip the market mood. A good outcome can end a bear (or lift a flat market into a bull),
+  // a bad one can end a bull (or sink a flat market into a bear). Chance per outcome type:
+  const FLIP = {
+    good: { squeeze: 0.3, beat: 0.2, splitWin: 0.25, index: 0.35, headlineSaved: 0.15 },
+    bad: { shortwin: 0.3, miss: 0.25, splitLose: 0.15, squeezedOut: 0.25, sector: 0.3, flash: 0.12, headlineLost: 0.2 },
+    minAge: 12,   // a season must have run this long before news can flip it
+    delay: 1.6,   // seconds after the outcome, so the result banner reads first
+  };
+  let enteredAt = 0;
+  let pendingFlip = null; // { id, at }
+  function outcome(kind) {
+    if (!id || pendingFlip) return;
+    const s = st();
+    if (s.clock - enteredAt < FLIP.minAge) return;
+    const good = FLIP.good[kind], bad = FLIP.bad[kind];
+    let to = null;
+    if (good && id !== "bull" && Math.random() < good) to = id === "bear" && Math.random() < 0.3 ? "side" : "bull";
+    if (bad && id !== "bear" && Math.random() < bad) to = "bear";
+    if (to) pendingFlip = { id: to, at: s.clock + FLIP.delay };
+  } // insider buying pauses the bear bleed until this clock time
 
   // Bear-market backfires: your own trades can spook the market.
   //   SELL       35% chance of PANIC SELLING: another 10-20% drop over 1.5s
@@ -66,14 +86,16 @@ TC.seasons = (() => {
     return Math.random() < 0.5 ? "bull" : "bear";
   }
 
-  function enter(newId) {
+  function enter(newId, cause) {
     id = newId;
+    enteredAt = st().clock;
+    pendingFlip = null;
     const d = cur().dur || [120, 240];
     left = rand(d[0], d[1]);
     next = pickNext();
     warned = false;
     document.documentElement.dataset.season = id;
-    TC.events.emit("season", { id, name: cur().name });
+    TC.events.emit("season", { id, name: cur().name, cause });
   }
 
   // The season lives in the save so a reload or an update keeps it
@@ -131,7 +153,9 @@ TC.seasons = (() => {
     calm(secs) { calmUntil = st().clock + secs; },
 
     init() {
-      TC.events.on("reset", () => { id = null; shock = null; delete document.documentElement.dataset.season; render(); });
+      TC.events.on("news", (e) => outcome(e.type));
+      TC.events.on("newsEnd", (e) => { if (e.type === "headline") outcome(e.saved >= 0.6 ? "headlineSaved" : e.saved < 0.2 ? "headlineLost" : ""); });
+      TC.events.on("reset", () => { pendingFlip = null; id = null; shock = null; delete document.documentElement.dataset.season; render(); });
       TC.events.on("sell", (e) => {
         if (id === "bear" && e.manual && Math.random() < BACKFIRE.sell) backfire(-rand(0.1, 0.2), 1.5, "PANIC SELLING");
       });
@@ -159,6 +183,7 @@ TC.seasons = (() => {
         return;
       }
       if (!SEASONS[next]) next = pickNext();
+      if (pendingFlip && s.clock >= pendingFlip.at) enter(pendingFlip.id, "news");
       left -= dt;
       if (left <= 0) enter(next);
       persist();

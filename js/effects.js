@@ -546,9 +546,10 @@ TC.effects = (() => {
       shake(tone === "down" ? 5 : 3, 0.3);
     });
 
-    TC.events.on("season", ({ id, name }) => {
+    TC.events.on("season", ({ id, name, cause }) => {
       const color = id === "bull" ? C.up : id === "bear" ? C.down : C.core;
       api.spawn("floatText", { x: w / 2 - 30, y: h * 0.45, text: name.toUpperCase(), color, size: 32, life: 2.2 });
+      if (cause === "news") api.spawn("floatText", { x: w / 2 - 30, y: h * 0.45 + 34, text: id === "bear" ? "THE MOOD SOURS" : "THE MOOD TURNS", color, size: 16, life: 2.2 });
       api.spawn("vignette", { color, life: 1.4, strength: 0.8 }, 2);
       api.spawn("pulse", { color, speed: 200, width: 50, life: 1.6, strength: 1.6 });
       shake(id === "bear" ? 6 : 4, 0.4);
