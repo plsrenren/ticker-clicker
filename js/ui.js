@@ -325,7 +325,11 @@ TC.ui = (() => {
       // Buy-the-dip button during event dips
       const dip = TC.trade.dipReady();
       $("dipBtn").hidden = !dip;
-      if (dip) $("dipSub").textContent = "−" + Math.round(TC.trade.dipDepth() * 100) + "% · stack 12 orders";
+      if (dip) {
+        const n = TC.market.dipStakeShares();
+        $("dipSub").textContent = "−" + Math.round(TC.trade.dipDepth() * 100) + "% · " +
+          (n >= 1 ? "+" + +(n / cfg.sharesOutstanding * 100).toFixed(2) + "% stake for " + f.money(n * st().basePrice) : "stack 12 orders");
+      }
       $("orders").textContent = f.int(st().orders) + (st().orders === 1 ? " order filled" : " orders filled");
       renderList(cfg.generators, "generator");
       renderList(cfg.upgrades, "upgrade");

@@ -47,6 +47,7 @@ TC.trade = (() => {
       if (!api.dipReady()) return false;
       ev.stackUsed = true;
       const s = st();
+      TC.market.dipBuyback(); // at the dipped price, before the bounce lands
       // Worth about 30 taps, kept between a 12% and 25% bounce
       const total = Math.max(Math.min(TC.market.perClick() * 30, s.basePrice * 0.25), s.basePrice * 0.12) * (TC.seasons ? TC.seasons.stackMult() : 1);
       const wrap = $("chartWrap").getBoundingClientRect();

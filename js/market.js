@@ -69,6 +69,22 @@ TC.market = (() => {
     buybackCost: () => cfg.stake.buyback * Math.max(st().basePrice, st().bestPrice) * (1 + cfg.stake.fee + api.buybackHeat()),
     buybackHeat: () => Math.max(0, (st().buybackHeat || 0) - (st().clock - (st().buybackAt || 0)) * cfg.stake.heatFade),
     canBuyback: () => st().listed && st().basePrice > 0 && st().shares + cfg.stake.buyback <= cfg.stake.max && st().cash >= api.buybackCost(),
+    // Discounted buyback that rides along with BUY THE DIP: at the current (dipped) price, no fee.
+    // Only offered once per event, so it can't be farmed. Buys what your cash covers, up to dipShares.
+    dipStakeShares() {
+      const s = st();
+      if (!s.basePrice) return 0;
+      return Math.max(0, Math.min(cfg.stake.dipShares, Math.floor(s.cash / s.basePrice), cfg.stake.max - s.shares));
+    },
+    dipBuyback() {
+      const s = st(), n = api.dipStakeShares();
+      if (n < 1) return 0;
+      const cost = n * s.basePrice;
+      s.cash -= cost;
+      s.shares += n;
+      TC.events.emit("dipStake", { shares: n, cost, discount: 1 - s.basePrice / s.bestPrice });
+      return n;
+    },
     buyback() {
       if (!api.canBuyback()) return false;
       const s = st(), cost = api.buybackCost();

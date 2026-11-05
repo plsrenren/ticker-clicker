@@ -534,6 +534,9 @@ TC.effects = (() => {
       api.spawn("floatText", { x: (x ?? tip.x) - 20, y: (y ?? tip.y) - 20, text: "HALTED", color: C.muted || C.down, size: 13, life: 0.6 });
     });
 
+    TC.events.on("dipStake", ({ shares, discount }) => {
+      api.spawn("floatText", { x: w / 2 - 70, y: h * 0.4, text: "+" + +(shares / TC.config.sharesOutstanding * 100).toFixed(2) + "% STAKE · " + Math.round(discount * 100) + "% OFF", color: C.up, size: 20, life: 1.6 });
+    });
     TC.events.on("buyback", ({ cost }) => {
       api.spawn("floatText", { x: w / 2 - 60, y: h * 0.4, text: "BUYBACK +0.25% STAKE", color: C.up, size: 22, life: 1.4 });
       api.spawn("vignette", { color: C.up, life: 0.6, strength: 0.4 }, 2);
