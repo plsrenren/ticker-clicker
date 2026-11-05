@@ -54,7 +54,7 @@ TC.market = (() => {
     // Price added per tap.
     perClick() {
       const pct = cfg.upgrades.reduce((p, u) => (st().upgrades[u.id] && u.kind === "cpsPct" ? p + u.value : p), 0);
-      return cfg.baseClick * upgradeProduct("mult") * api.metaMult() * (TC.hype ? TC.hype.tapMult() : 1) + api.perSecond() * pct;
+      return cfg.baseClick * upgradeProduct("mult") * api.metaMult() * (TC.hype ? TC.hype.tapMult() : 1) * (TC.debuffs ? TC.debuffs.tapMult() : 1) + api.perSecond() * pct;
     },
 
     // Cash paid per $1 the price climbs above its record.
@@ -110,8 +110,17 @@ TC.market = (() => {
 
     buy(x = null, y = null) {
       if (!st().listed) return;
+      // Bear-market overtrading: halts swallow the tap, sell walls flip it into a drop
+      const ot = TC.overtrade ? TC.overtrade.tap() : "ok";
+      if (ot === "halt") { TC.events.emit("halted", { x, y }); return; }
       const amount = api.perClick();
+      if (ot === "wall") {
+        st().basePrice = Math.max(0.01, st().basePrice - amount);
+        TC.events.emit("sellWall", { amount, x, y });
+        return;
+      }
       api.push(amount);
+      if (TC.overtrade) TC.overtrade.landed(amount);
       st().orders++;
       st().lifetime.taps++;
       wobble = Math.abs(wobble) * 0.5; // a buy kicks noise upward

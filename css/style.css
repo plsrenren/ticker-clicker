@@ -672,6 +672,16 @@ body {
 .cap-row { align-items: flex-start; }
 .cap-label { white-space: nowrap; padding-top: 3px; }
 .debuffs { flex-wrap: wrap; justify-content: flex-end; }
+/* RSI chip: how overbought your tapping is in a bear market */
+.rsi-chip {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.06em; font-variant-numeric: tabular-nums;
+  padding: 3px 8px; border-radius: 10px; color: var(--muted);
+  border: 1px solid var(--rule); white-space: nowrap;
+}
+.rsi-chip[hidden] { display: none; }
+.rsi-chip[data-level="warm"] { color: #ffb347; border-color: color-mix(in srgb, #ffb347 50%, transparent); }
+.rsi-chip[data-level="hot"] { color: var(--ink); background: var(--down); border-color: var(--down); animation: season-blink 0.5s steps(2, jump-none) infinite; }
+@media (prefers-reduced-motion: reduce) { .rsi-chip { animation: none !important; } }
 
 /* Shown only if the game hits a script error */
 .err-banner {

@@ -178,7 +178,10 @@ TC.sound = (() => {
         }
       });
       E.on("fine", () => { chord([440, 349, 262], { type: "square", dur: 0.25, vol: 0.15, spread: 0.12 }); });
-      E.on("debuff", () => { tone({ freq: 220, to: 150, type: "triangle", dur: 0.5, vol: 0.25 }); });
+      E.on("overtrade", (e) => { sfx.buzz(); tone({ freq: e.kind === "halt" ? 180 : 260, to: 50, type: "sawtooth", dur: e.kind === "halt" ? 0.9 : 0.6, vol: 0.22 }); });
+      E.on("sellWall", () => { tone({ freq: 200, to: 120, type: "square", dur: 0.08, vol: 0.1 }); });
+      E.on("halted", () => { tone({ freq: 110, type: "square", dur: 0.05, vol: 0.06 }); });
+      E.on("debuff", (e) => { if (e.id === "remorse" || e.id === "halt") return; tone({ freq: 220, to: 150, type: "triangle", dur: 0.5, vol: 0.25 }); });
       E.on("seasonWarn", () => { tone({ freq: 660, type: "sine", dur: 0.25, vol: 0.2 }); tone({ freq: 660, type: "sine", dur: 0.25, vol: 0.2, delay: 0.35 }); });
     },
   };

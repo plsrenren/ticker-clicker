@@ -513,6 +513,25 @@ TC.effects = (() => {
       shake(7, 0.4);
     });
 
+    TC.events.on("overtrade", ({ kind, title }) => {
+      const tip = TC.chart.tip();
+      api.spawn("floatText", { x: w / 2 - 40, y: h * 0.46, text: title, color: C.down, size: kind === "halt" ? 34 : 30, life: 1.8 });
+      api.spawn("vignette", { color: C.down, life: 1, strength: 0.9 }, 2);
+      api.spawn("pulse", { color: C.down, speed: 220, width: 40, life: 1.4, strength: 1.6 });
+      api.spawn("ring", { x: tip.x, y: tip.y, color: C.down, max: 160, life: 0.7 });
+      if (kind === "halt") api.spawn("flash", { color: C.down, life: 0.5, strength: 0.35 }, 3);
+      shake(kind === "halt" ? 9 : 6, 0.4);
+    });
+    TC.events.on("sellWall", ({ amount, x, y }) => {
+      const tip = TC.chart.tip();
+      api.spawn("floatText", { x: (x ?? tip.x) - 20, y: (y ?? tip.y) - 24, text: "SELL WALL −" + TC.format.money(amount), color: C.down, size: 15, life: 0.9 });
+      api.spawn("ring", { x: tip.x, y: tip.y, color: C.down, max: 50, life: 0.4 });
+    });
+    TC.events.on("halted", ({ x, y }) => {
+      const tip = TC.chart.tip();
+      api.spawn("floatText", { x: (x ?? tip.x) - 20, y: (y ?? tip.y) - 20, text: "HALTED", color: C.muted || C.down, size: 13, life: 0.6 });
+    });
+
     TC.events.on("fine", ({ amount }) => {
       api.spawn("floatText", { x: w / 2 - 30, y: h * 0.42, text: "SEC FINE −" + TC.format.money(amount), color: C.down, size: 30, life: 2 });
       api.spawn("flash", { color: C.down, life: 0.6, strength: 0.3 }, 3);
@@ -521,7 +540,8 @@ TC.effects = (() => {
     TC.events.on("crashSell", () => {
       api.spawn("floatText", { x: w / 2 - 30, y: h * 0.58, text: "SOLD INTO THE CRASH", color: C.down, size: 22, life: 1.6 });
     });
-    TC.events.on("debuff", ({ name }) => {
+    TC.events.on("debuff", ({ id, name }) => {
+      if (id === "remorse" || id === "halt") return; // overtrade already announced it
       api.spawn("floatText", { x: w / 2 - 30, y: h * 0.62, text: name.toUpperCase(), color: C.down, size: 22, life: 1.8 });
       api.spawn("vignette", { color: C.down, life: 0.8, strength: 0.5 }, 2);
     });

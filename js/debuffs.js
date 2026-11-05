@@ -1,6 +1,8 @@
 // Debuffs: timed penalties that linger after a bad move, shown as red timer chips by the season chip.
 //   Reputation damage  buyers 50% for 30s   after a PANIC SELLING or BULL TRAP backfire
 //   Retail spooked     retail traders 80% for 20s   when a BUY THE DIP window passes unused
+//   Buyer's remorse    taps 50% for 15s             from overtrade.js (mashing in a bear)
+//   Trading halt       taps do nothing for 5s       from overtrade.js
 // Stored in state.debuffs (id -> game-clock end time), so they survive a reload.
 window.TC = window.TC || {};
 
@@ -11,6 +13,8 @@ TC.debuffs = (() => {
   const TYPES = {
     rep:    { name: "Reputation damage", short: "REP", dur: 30, buyer: 0.5 },
     retail: { name: "Retail spooked", short: "RETAIL", dur: 20, gen: { retail: 0.8 } },
+    remorse: { name: "Buyer's remorse", short: "TAPS", dur: 15, tap: 0.5 },
+    halt:    { name: "Trading halt", short: "HALTED", dur: 5, tap: 0 },
   };
   let lastKey = "";
 
@@ -23,8 +27,9 @@ TC.debuffs = (() => {
     const ids = activeIds();
     const parts = ids.map((id) => {
       const t = TYPES[id];
-      const pct = t.buyer ? Math.round((1 - t.buyer) * 100) : Math.round((1 - Object.values(t.gen)[0]) * 100);
-      return { id, text: t.short + " −" + pct + "% " + Math.ceil(list()[id] - st().clock) + "s", title: t.name };
+      const m = t.buyer != null ? t.buyer : t.tap != null ? t.tap : Object.values(t.gen)[0];
+      const pct = m > 0 ? " −" + Math.round((1 - m) * 100) + "%" : "";
+      return { id, text: t.short + pct + " " + Math.ceil(list()[id] - st().clock) + "s", title: t.name };
     });
     const key = parts.map((p) => p.text).join("|");
     if (key === lastKey) return;
@@ -50,6 +55,7 @@ TC.debuffs = (() => {
       if (!wasOn) TC.events.emit("debuff", { id, name: t.name });
     },
     buyerMult: () => activeIds().reduce((m, id) => m * (TYPES[id].buyer || 1), 1),
+    tapMult: () => activeIds().reduce((m, id) => m * (TYPES[id].tap != null ? TYPES[id].tap : 1), 1),
     genMult: (gid) => activeIds().reduce((m, id) => m * ((TYPES[id].gen && TYPES[id].gen[gid]) || 1), 1),
 
     init() {
