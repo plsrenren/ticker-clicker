@@ -14,7 +14,7 @@ TC.hype = (() => {
 
   const moves = [
     {
-      id: "pr", name: "Press release", unlock: 10, cooldown: 40,
+      id: "pr", name: "Press release", unlock: 25, cooldown: 25,
       run() {
         if (scandal()) return scandalHit();
         play([{ f: rand(0.1, 0.16), d: 2.5 }]);
@@ -22,7 +22,7 @@ TC.hype = (() => {
       },
     },
     {
-      id: "tweet", name: "Tweet storm", unlock: 50, cooldown: 75,
+      id: "tweet", name: "Tweet storm", unlock: 75, cooldown: 45,
       run() {
         if (scandal()) return scandalHit();
         boostUntil = st().clock + 10;
@@ -31,7 +31,7 @@ TC.hype = (() => {
       },
     },
     {
-      id: "rumor", name: "Merger rumor", unlock: 250, cooldown: 120,
+      id: "rumor", name: "Merger rumor", unlock: 300, cooldown: 70,
       run() {
         if (Math.random() < 0.7) {
           const up = rand(0.18, 0.3);
@@ -47,7 +47,7 @@ TC.hype = (() => {
       },
     },
     {
-      id: "call", name: "Earnings call", unlock: 1000, cooldown: 180,
+      id: "call", name: "Earnings call", unlock: 1200, cooldown: 100,
       blocked: () => !!(TC.news && TC.news.active()),
       run() {
         TC.news.trigger("earnings", { beatOdds: 0.8 });

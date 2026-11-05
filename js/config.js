@@ -2,7 +2,7 @@
 window.TC = window.TC || {};
 
 TC.config = {
-  baseClick: 1,          // dollars added to the price per buy, before upgrades
+  baseClick: 0.25,       // dollars added to the price per buy, before upgrades (slow opening; tuned with the bot sim)
   costGrowth: 1.15,      // each extra buyer of a kind costs 15% more
   sampleMs: 250,         // how often the chart records a point
   historyPoints: 240,    // default visible window (240 x 250ms = 60s)
