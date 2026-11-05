@@ -95,6 +95,25 @@ window.TC = window.TC || {};
     TC.events.emit("ipo", { symbol });
   }
 
+  // Tap and hold: after HOLD.delay the finger keeps buying, ramping from HOLD.from to HOLD.to buys a second
+  // over HOLD.ramp seconds. Held buys are normal manual buys (bear-market overtrading still applies).
+  // A second finger (pinch) cancels it.
+  const HOLD = { delay: 0.3, from: 3, to: 6, ramp: 1.5 };
+  let hold = null;
+  function tickHold(dt) {
+    if (!hold || TC.ipo.visible() || TC.offline.visible()) return;
+    hold.t += dt;
+    if (hold.t < HOLD.delay) return;
+    const rate = HOLD.from + (HOLD.to - HOLD.from) * Math.min(1, (hold.t - HOLD.delay) / HOLD.ramp);
+    hold.acc += rate * dt;
+    while (hold.acc >= 1) {
+      hold.acc -= 1;
+      // a little spread so the shots don't stack on one pixel
+      TC.market.buy(hold.x + (Math.random() - 0.5) * 18, hold.y + (Math.random() - 0.5) * 18);
+      haptic();
+    }
+  }
+
   function haptic() {
     try { navigator.vibrate && navigator.vibrate(6); } catch (e) { /* not supported */ }
   }
@@ -108,7 +127,18 @@ window.TC = window.TC || {};
       const r = wrap.getBoundingClientRect();
       TC.market.buy(e.clientX - r.left, e.clientY - r.top);
       haptic();
+      // Start a hold: keep the finger down and it fires buys on its own (see tickHold)
+      hold = hold ? null : { id: e.pointerId, x: e.clientX - r.left, y: e.clientY - r.top, t: 0, acc: 0 };
     });
+    wrap.addEventListener("pointermove", (e) => {
+      if (!hold || e.pointerId !== hold.id) return;
+      const r = wrap.getBoundingClientRect();
+      hold.x = e.clientX - r.left; hold.y = e.clientY - r.top;
+    });
+    const release = (e) => { if (hold && e.pointerId === hold.id) hold = null; };
+    wrap.addEventListener("pointerup", release);
+    wrap.addEventListener("pointercancel", release);
+    wrap.addEventListener("pointerleave", release);
     wrap.addEventListener("contextmenu", (e) => e.preventDefault());
 
     // Zoom the time window: two-finger pinch on touch, scroll wheel or trackpad pinch on desktop.
@@ -222,6 +252,7 @@ window.TC = window.TC || {};
     if (!Number.isFinite(s.basePrice) || s.basePrice < 0) s.basePrice = Math.max(0, s.bestPrice * 0.5 || 0);
     if (!Number.isFinite(s.cash)) s.cash = 0;
 
+    tickHold(dt);
     TC.market.step(dt);
     TC.news.update(dt);
     TC.trade.update(dt);
