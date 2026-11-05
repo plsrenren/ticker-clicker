@@ -39,6 +39,8 @@ TC.trade = (() => {
 
     // How far below the event high the price is (0.2 = 20% down).
     dipDepth() { return ev ? 1 - st().basePrice / ev.high : 0; },
+    // An event has the price 8%+ below its high: selling now is selling into a crash
+    inCrash() { return !!ev && st().basePrice <= ev.high * 0.92; },
     dipReady() { return !!ev && !ev.stackUsed && st().basePrice <= ev.high * (TC.seasons ? TC.seasons.dipLine() : DIP); },
 
     stackBuy() {
@@ -65,8 +67,11 @@ TC.trade = (() => {
         if (!ev || ev.ref !== active) ev = { ref: active, start: s.basePrice, high: s.basePrice, grace: GRACE, stackUsed: false };
         if (s.basePrice > ev.high) ev.high = s.basePrice;
       } else if (ev && (ev.grace -= dt) <= 0) {
+        // The dip button was offered and never pressed
+        if (ev.dipShown && !ev.stackUsed) TC.events.emit("dipMissed", {});
         ev = null;
       }
+      if (ev && !ev.dipShown && api.dipReady()) ev.dipShown = true;
 
       // Fire the stacked orders one after another
       if (stack) {

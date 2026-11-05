@@ -513,6 +513,19 @@ TC.effects = (() => {
       shake(7, 0.4);
     });
 
+    TC.events.on("fine", ({ amount }) => {
+      api.spawn("floatText", { x: w / 2 - 30, y: h * 0.42, text: "SEC FINE −" + TC.format.money(amount), color: C.down, size: 30, life: 2 });
+      api.spawn("flash", { color: C.down, life: 0.6, strength: 0.3 }, 3);
+      shake(6, 0.35);
+    });
+    TC.events.on("crashSell", () => {
+      api.spawn("floatText", { x: w / 2 - 30, y: h * 0.58, text: "SOLD INTO THE CRASH", color: C.down, size: 22, life: 1.6 });
+    });
+    TC.events.on("debuff", ({ name }) => {
+      api.spawn("floatText", { x: w / 2 - 30, y: h * 0.62, text: name.toUpperCase(), color: C.down, size: 22, life: 1.8 });
+      api.spawn("vignette", { color: C.down, life: 0.8, strength: 0.5 }, 2);
+    });
+
     TC.events.on("stackBuy", () => {
       api.spawn("floatText", { x: w / 2 - 30, y: h * 0.32, text: "BOUGHT THE DIP", color: C.up, size: 32, life: 1.5 });
       api.spawn("vignette", { color: C.up, life: 0.7, strength: 0.5 }, 2);

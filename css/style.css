@@ -650,3 +650,25 @@ body {
 :root[data-season="bull"] .chart-wrap { background: radial-gradient(120% 80% at 70% 0%, color-mix(in srgb, var(--up) 7%, var(--ink)), var(--ink) 70%); }
 :root[data-season="bear"] .chart-wrap { background: radial-gradient(120% 80% at 70% 100%, color-mix(in srgb, var(--down) 9%, var(--ink)), var(--ink) 70%); }
 @media (prefers-reduced-motion: reduce) { .season-chip { animation: none !important; } }
+
+/* Debuff chips (red timers) next to the season chip */
+.chips { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.debuffs { display: inline-flex; gap: 6px; }
+.debuffs[hidden] { display: none; }
+.debuff-chip {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  padding: 3px 8px;
+  border-radius: 10px;
+  color: var(--ink);
+  background: var(--down);
+  white-space: nowrap;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--down) 50%, transparent);
+}
+/* SELL warns you when it will cost extra */
+.sell-btn.risky { border-color: var(--down); box-shadow: 0 0 0 1px var(--down), 0 0 18px color-mix(in srgb, var(--down) 45%, transparent); }
+.cap-row { align-items: flex-start; }
+.cap-label { white-space: nowrap; padding-top: 3px; }
+.debuffs { flex-wrap: wrap; justify-content: flex-end; }

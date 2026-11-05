@@ -47,8 +47,8 @@ TC.market = (() => {
 
     // Price added per second by all buyers.
     perSecond() {
-      const raw = cfg.generators.reduce((sum, g) => sum + g.rate * (st().owned[g.id] || 0) * (TC.seasons ? TC.seasons.genMult(g.id) : 1), 0);
-      return raw * upgradeProduct("gen") * api.metaMult() * (TC.hype ? TC.hype.buyerMult() : 1) * (TC.seasons ? TC.seasons.buyerMult() : 1);
+      const raw = cfg.generators.reduce((sum, g) => sum + g.rate * (st().owned[g.id] || 0) * (TC.seasons ? TC.seasons.genMult(g.id) : 1) * (TC.debuffs ? TC.debuffs.genMult(g.id) : 1), 0);
+      return raw * upgradeProduct("gen") * api.metaMult() * (TC.hype ? TC.hype.buyerMult() : 1) * (TC.seasons ? TC.seasons.buyerMult() : 1) * (TC.debuffs ? TC.debuffs.buyerMult() : 1);
     },
 
     // Price added per tap.
@@ -73,7 +73,16 @@ TC.market = (() => {
       return st().shares * st().basePrice * cfg.sell.payout * api.sellBonus();
     },
     // Peak-sell multiplier during market events (see trade.js)
-    sellBonus: () => (TC.trade ? TC.trade.peakBonus() : 1),
+    // 0.5x off-peak, 2-4x at an event peak
+    sellBonus() {
+      const b = TC.trade ? TC.trade.peakBonus() : 1;
+      return b > 1 ? b : cfg.sell.offPeak;
+    },
+    // Selling while an event has the price well below its high = selling into a crash
+    sellingIntoCrash: () => !!(TC.trade && TC.trade.inCrash()),
+    sellDrop: () => (api.sellingIntoCrash() ? cfg.sell.crashDrop : cfg.sell.drop),
+    // Selling again this soon draws an SEC fine
+    fineRisk: () => st().clock - st().lastSellAt < cfg.sell.fineWindow,
     sellCooldown() { return Math.max(0, st().sellReadyAt - st().clock); },
     canSell() { return st().listed && st().basePrice >= cfg.sell.minPrice && api.sellCooldown() === 0; },
 
@@ -116,14 +125,23 @@ TC.market = (() => {
       const bonus = api.sellBonus();
       const cash = api.sellValue();
       const before = api.quote();
+      const crash = api.sellingIntoCrash();
+      const fined = api.fineRisk();
       s.cash += cash;
-      s.basePrice *= 1 - cfg.sell.drop;
+      s.basePrice *= 1 - api.sellDrop();
+      s.lastSellAt = s.clock;
       s.sells++;
       s.lifetime.sells++;
       s.sellReadyAt = s.clock + cfg.sell.cooldown;
       wobble = -cfg.wobble;
       dipTimer = 4; // let your own sell own the moment
-      TC.events.emit("sell", { amount: before - api.quote(), cash, manual: true, bonus, atTop: before >= s.bestPrice * 0.95 });
+      TC.events.emit("sell", { amount: before - api.quote(), cash, manual: true, bonus, crash, atTop: before >= s.bestPrice * 0.95 });
+      if (crash) TC.events.emit("crashSell", {});
+      if (fined) {
+        const fine = s.cash * cfg.sell.fine;
+        s.cash -= fine;
+        TC.events.emit("fine", { amount: fine });
+      }
       return true;
     },
 
@@ -163,13 +181,13 @@ TC.market = (() => {
       if (!s.listed) return;
       s.clock += dt;
 
-      const m = upgradeProduct("gen") * api.metaMult() * (TC.hype ? TC.hype.buyerMult() : 1) * (TC.seasons ? TC.seasons.buyerMult() : 1);
+      const m = upgradeProduct("gen") * api.metaMult() * (TC.hype ? TC.hype.buyerMult() : 1) * (TC.seasons ? TC.seasons.buyerMult() : 1) * (TC.debuffs ? TC.debuffs.buyerMult() : 1);
       for (const g of cfg.generators) {
         const n = s.owned[g.id] || 0;
         let o = orderBook[g.id];
         if (!n) { if (o) o.pending = 0; continue; }
         if (!o) o = orderBook[g.id] = { pending: 0, timer: Math.random() * orderGap(n) };
-        o.pending += g.rate * n * m * (TC.seasons ? TC.seasons.genMult(g.id) : 1) * dt;
+        o.pending += g.rate * n * m * (TC.seasons ? TC.seasons.genMult(g.id) : 1) * (TC.debuffs ? TC.debuffs.genMult(g.id) : 1) * dt;
         o.timer -= dt;
         if (o.timer <= 0) {
           // Keep orders from different buyers apart so each one reads on its own

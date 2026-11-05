@@ -243,11 +243,14 @@ TC.ui = (() => {
       sb.style.setProperty("--cd", (cd / cfg.sell.cooldown).toFixed(3));
       const bonus = TC.market.sellBonus();
       sb.classList.toggle("peak", bonus > 1 && TC.market.canSell());
+      sb.classList.toggle("risky", bonus <= 1 && TC.market.canSell() && (TC.market.fineRisk() || TC.market.sellingIntoCrash()));
       $("sellSub").textContent =
         st().basePrice < cfg.sell.minPrice ? "Reach " + f.money(cfg.sell.minPrice) + " to sell" :
         cd > 0 ? "Ready in " + Math.ceil(cd) + "s" :
-        bonus > 1 ? "PEAK " + bonus + "x · +" + f.money(TC.market.sellValue()) :
-        "+" + f.money(TC.market.sellValue()) + " · price −" + Math.round(cfg.sell.drop * 100) + "%";
+        bonus > 1 ? "PEAK " + bonus + "x · +" + f.money(TC.market.sellValue()) + (TC.market.fineRisk() ? " · SEC fine!" : "") :
+        TC.market.fineRisk() ? "+" + f.money(TC.market.sellValue()) + " · SEC fine −20% cash" :
+        TC.market.sellingIntoCrash() ? "+" + f.money(TC.market.sellValue()) + " · CRASH: price −" + Math.round(TC.market.sellDrop() * 100) + "%" :
+        "+" + f.money(TC.market.sellValue()) + " · half price off-peak";
 
       // Buy-the-dip button during event dips
       const dip = TC.trade.dipReady();

@@ -177,6 +177,8 @@ TC.sound = (() => {
           if (tier >= 2) noise({ dur: 0.5, vol: 0.2, from: 400, to: 6000, q: 2 });
         }
       });
+      E.on("fine", () => { chord([440, 349, 262], { type: "square", dur: 0.25, vol: 0.15, spread: 0.12 }); });
+      E.on("debuff", () => { tone({ freq: 220, to: 150, type: "triangle", dur: 0.5, vol: 0.25 }); });
       E.on("seasonWarn", () => { tone({ freq: 660, type: "sine", dur: 0.25, vol: 0.2 }); tone({ freq: 660, type: "sine", dur: 0.25, vol: 0.2, delay: 0.35 }); });
     },
   };

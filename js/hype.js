@@ -16,6 +16,7 @@ TC.hype = (() => {
     {
       id: "pr", name: "Press release", unlock: 10, cooldown: 40,
       run() {
+        if (scandal()) return scandalHit();
         play([{ f: rand(0.1, 0.16), d: 2.5 }]);
         return { title: "PRESS RELEASE", tone: "up" };
       },
@@ -23,6 +24,7 @@ TC.hype = (() => {
     {
       id: "tweet", name: "Tweet storm", unlock: 50, cooldown: 75,
       run() {
+        if (scandal()) return scandalHit();
         boostUntil = st().clock + 10;
         play([{ f: rand(0.03, 0.06), d: 1.5 }]);
         return { title: "TWEET STORM", tone: "up" };
@@ -37,6 +39,10 @@ TC.hype = (() => {
           return { title: "MERGER RUMOR", tone: "up" };
         }
         play([{ f: -rand(0.08, 0.12), d: 1 }]);
+        // Getting caught locks every hype move for 30s
+        const until = st().clock + 30;
+        for (const x of moves) readyAt[x.id] = Math.max(readyAt[x.id] || 0, until);
+        lockedUntil = until;
         return { title: "RUMOR DENIED", tone: "down" };
       },
     },
@@ -51,6 +57,13 @@ TC.hype = (() => {
   ];
 
   const readyAt = {};      // id -> game clock time it's ready again
+  let lockedUntil = -1;    // all hype locked after a denied rumor
+  // In a bear market, a press release or tweet storm has a 30% chance to blow up into a scandal
+  const scandal = () => TC.seasons && TC.seasons.current() === "bear" && Math.random() < 0.3;
+  function scandalHit() {
+    play([{ f: -rand(0.1, 0.18), d: 1.2 }]);
+    return { title: "SCANDAL", tone: "down" };
+  }
   let boostUntil = -1;     // tweet storm end time
   let segs = null, seg = 0, segT = 0, acc = 0, applied = 0;
   const els = {};
@@ -62,7 +75,10 @@ TC.hype = (() => {
     const s = st();
     if (s.bestPrice < m.unlock) return { state: "locked", sub: TC.format.axis(m.unlock) };
     const left = (readyAt[m.id] || 0) - s.clock;
-    if (left > 0) return { state: "cooling", sub: Math.ceil(left) + "s", frac: left / m.cooldown };
+    if (left > 0) {
+      const locked = s.clock < lockedUntil;
+      return { state: "cooling", sub: (locked ? "Locked " : "") + Math.ceil(left) + "s", frac: Math.min(1, left / m.cooldown) };
+    }
     if (m.blocked && m.blocked()) return { state: "blocked", sub: "Wait" };
     return { state: "ready", sub: "Ready" };
   }
@@ -98,7 +114,7 @@ TC.hype = (() => {
       }
       TC.events.on("reset", () => {
         for (const k in readyAt) delete readyAt[k];
-        boostUntil = -1; segs = null;
+        boostUntil = -1; segs = null; lockedUntil = -1;
       });
     },
 
