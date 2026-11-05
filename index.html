@@ -85,6 +85,7 @@
         <button type="button" role="tab" data-tab="buyers" aria-selected="true">Buyers</button>
         <button type="button" role="tab" data-tab="upgrades" aria-selected="false">Upgrades <b class="tab-badge" id="upBadge" hidden>0</b></button>
         <button type="button" role="tab" data-tab="trophies" aria-selected="false">Trophies</button>
+        <button type="button" role="tab" data-tab="leaders" aria-selected="false">Leaders</button>
       </div>
       <section class="pane" data-pane="buyers">
         <div class="qty" id="buyQty" role="group" aria-label="Buy amount">
@@ -107,6 +108,20 @@
           <span class="orders" id="orders">0 orders filled</span>
           <button id="reset" class="reset" type="button">Delist and wipe everything</button>
         </div>
+      </section>
+      <section class="pane" data-pane="leaders" hidden>
+        <div class="lb-controls">
+          <div class="qty" id="lbBoard" role="group" aria-label="Leaderboard">
+            <button type="button" data-board="cap" aria-pressed="true">Top cap</button>
+            <button type="button" data-board="speed" aria-pressed="false">Fastest private</button>
+          </div>
+          <div class="qty" id="lbPeriod" role="group" aria-label="Period">
+            <button type="button" data-period="week" aria-pressed="true">Week</button>
+            <button type="button" data-period="all" aria-pressed="false">All time</button>
+          </div>
+        </div>
+        <ol class="lb-list" id="lbList"></ol>
+        <p class="desk-note" id="lbNote" hidden></p>
       </section>
     </div>
   </aside>
@@ -164,6 +179,7 @@
 <script src="js/offline.js"></script>
 <script src="js/achievements.js"></script>
 <script src="js/rivals.js"></script>
+<script src="js/leaderboard.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/ipo.js"></script>
 <script src="js/main.js"></script>

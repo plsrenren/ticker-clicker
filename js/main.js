@@ -25,6 +25,7 @@ window.TC = window.TC || {};
     TC.dividends.init();
     TC.achievements.init();
     TC.rivals.init();
+    TC.leaderboard.init();
     TC.events.on("private", () => newRun(false));
     const before = TC.state.data.basePrice;
     if (!TC.state.data.listed) TC.ipo.show();
