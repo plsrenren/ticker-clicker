@@ -12,7 +12,8 @@ TC.ipo = (() => {
     const v = clean(input.value);
     if (input.value !== v) input.value = v;
     $("ipoGo").disabled = v.length === 0;
-    $("ipoGo").textContent = v ? `List $${v} at $0.00` : "Go public at $0.00";
+    const at = "$" + TC.config.ipoPrice.toFixed(2);
+    $("ipoGo").textContent = v ? `List $${v} at ${at}` : `Go public at ${at}`;
   }
 
   return {

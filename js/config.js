@@ -19,6 +19,7 @@ TC.config = {
   //   SELL       sells sell.stakePct of your shares at once
   //   BUYBACK    spend cash to buy 0.25% of the company back at the current price (+ fee)
   //   Dividends pay cash without selling shares. Going private resets the stake.
+  ipoPrice: 0.1,             // share price you list at (a penny stock)
   sharesOutstanding: 1000000, // market cap = share price x this (the headline number)
   stake: {
     start: 100000,       // 10% of the company at IPO

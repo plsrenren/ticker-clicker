@@ -74,6 +74,11 @@ window.TC = window.TC || {};
     const s = TC.state.data;
     s.symbol = symbol;
     s.listed = true;
+    // List at the offer price, so the chart starts there instead of at zero
+    const ipo = TC.config.ipoPrice;
+    if (s.basePrice < ipo) s.basePrice = ipo;
+    if (s.bestPrice < ipo) s.bestPrice = ipo;
+    s.dayOpen = ipo;
     TC.ui.setSymbol(symbol);
     TC.state.save();
     TC.events.emit("ipo", { symbol });
