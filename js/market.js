@@ -87,12 +87,12 @@ TC.market = (() => {
     marketCap: (price) => (price ?? api.quote()) * cfg.sharesOutstanding,
 
     // Cash a sell would pay right now, and the price after it.
-    // Peak sells are a bigger offering: hot demand lets you dump bonus x 3% of your shares at full price.
+    // Peak sells are a bigger offering: hot demand lets you dump bonus x 2% of your shares at full price.
     // Off-peak sells dump 3% at half price. Either way shares never sell above the price,
     // so selling and buying back can't print money.
     sellFrac() {
       const b = api.sellBonus();
-      return Math.min(0.15, cfg.sell.stakePct * (b > 1 ? b : 1));
+      return b > 1 ? cfg.sell.peakPct * b : cfg.sell.stakePct;
     },
     sellValue() {
       const b = api.sellBonus();

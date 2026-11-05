@@ -206,7 +206,7 @@ TC.ui = (() => {
     if (!unlocked) {
       btn.disabled = true;
     } else {
-      $("privateText").textContent = "Take " + f.int(pts) + " founder points (" + bonus(pts) + " forever). Your price, cash, buyers and upgrades reset, and you list again under a new name.";
+      $("privateText").textContent = "Take " + f.int(pts) + " founder points (" + bonus(pts) + " forever, " + TC.prestige.stakeMult().toFixed(2) + "x from your " + (TC.market.stakePct() * 100).toFixed(1) + "% stake). Your price, cash, buyers and upgrades reset, and you list again under a new name.";
       btn.disabled = false;
       if (!btn.classList.contains("armed")) btn.textContent = "Go private for " + f.int(pts) + " points";
     }
