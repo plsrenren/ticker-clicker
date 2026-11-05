@@ -334,6 +334,39 @@ TC.effects = (() => {
     wrapEl.style.transform = `translate(${(Math.random() - 0.5) * 2 * m}px, ${(Math.random() - 0.5) * 2 * m}px)`;
   }
 
+  // Charge ring around the finger: fills clockwise over the charge, then pulses hot when full
+  let chargeClock = 0;
+  function drawCharge(g) {
+    const c = api.charge;
+    if (!c) return;
+    chargeClock += 1 / 60;
+    const r = 30 + c.p * 14;
+    const color = c.max ? C.core : C.line;
+    g.save();
+    g.lineCap = "round";
+    // track
+    g.strokeStyle = C.line + "33";
+    g.lineWidth = 4;
+    g.beginPath(); g.arc(c.x, c.y, r, 0, Math.PI * 2); g.stroke();
+    // fill
+    g.strokeStyle = color;
+    g.shadowColor = C.line;
+    g.shadowBlur = (c.max ? 22 + 10 * Math.sin(chargeClock * 18) : 10) * glow();
+    g.lineWidth = c.max ? 6 : 4;
+    g.beginPath(); g.arc(c.x, c.y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * c.p); g.stroke();
+    if (c.max) {
+      g.globalAlpha = 0.25 + 0.15 * Math.sin(chargeClock * 18);
+      g.fillStyle = C.line;
+      g.beginPath(); g.arc(c.x, c.y, r - 6, 0, Math.PI * 2); g.fill();
+      g.globalAlpha = 1;
+      g.font = '800 13px "Bricolage Grotesque", sans-serif';
+      g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillStyle = C.core;
+      g.fillText("MAX", c.x, c.y - r - 14);
+    }
+    g.restore();
+  }
+
   const api = {
     kinds,
     feed,
@@ -363,10 +396,12 @@ TC.effects = (() => {
       feed.update(dt);
       updateShake(dt);
     },
+    charge: null, // { x, y, p 0-1, max } set by main.js while you hold to charge
     draw() {
       ctx.clearRect(0, 0, w, h);
       for (const e of live) e.draw(ctx);
       feed.draw(ctx);
+      drawCharge(ctx);
     },
     clear() { live.length = 0; feed.clear(); },
   };
@@ -536,6 +571,19 @@ TC.effects = (() => {
 
     TC.events.on("dipStake", ({ shares, discount }) => {
       api.spawn("floatText", { x: w / 2 - 70, y: h * 0.4, text: "+" + +(shares / TC.config.sharesOutstanding * 100).toFixed(2) + "% STAKE · " + Math.round(discount * 100) + "% OFF", color: C.up, size: 20, life: 1.6 });
+    });
+    TC.events.on("chargeMax", ({ x, y }) => {
+      api.spawn("ring", { x, y, color: C.core, max: 110, life: 0.5 });
+      api.spawn("vignette", { color: C.up, life: 0.4, strength: 0.35 }, 2);
+      shake(2, 0.15);
+    });
+    TC.events.on("chargeRelease", ({ x, y, n, max }) => {
+      api.spawn("ring", { x, y, color: max ? C.core : C.line, max: max ? 200 : 90 + n * 6, life: max ? 0.8 : 0.5 });
+      if (max) {
+        api.spawn("floatText", { x: x - 40, y: y - 60, text: "x" + n + " BURST", color: C.up, size: 24, life: 1.2 });
+        api.spawn("pulse", { color: C.core, speed: 260, width: 34, life: 1, strength: 1.4 });
+        shake(4, 0.25);
+      }
     });
     TC.events.on("buyback", ({ cost, insider }) => {
       api.spawn("floatText", { x: w / 2 - 60, y: h * 0.4, text: "BUYBACK +0.25% STAKE", color: C.up, size: 22, life: 1.4 });

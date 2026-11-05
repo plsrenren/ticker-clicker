@@ -95,22 +95,44 @@ window.TC = window.TC || {};
     TC.events.emit("ipo", { symbol });
   }
 
-  // Tap and hold: after HOLD.delay the finger keeps buying, ramping from HOLD.from to HOLD.to buys a second
-  // over HOLD.ramp seconds. Held buys are normal manual buys (bear-market overtrading still applies).
-  // A second finger (pinch) cancels it.
-  const HOLD = { delay: 0.3, from: 3, to: 6, ramp: 1.5 };
+  // Charge shot: tap and hold to charge, release to fire a burst of buys.
+  // Charging starts after CHARGE.delay and is full after CHARGE.full seconds of holding.
+  // Release fires up to CHARGE.shots buys (scaled by charge), or CHARGE.maxShots at full charge.
+  // Burst buys are normal manual buys, so bear-market overtrading still applies. A second finger (pinch) cancels.
+  const CHARGE = { delay: 0.25, full: 3, shots: 12, maxShots: 15, gap: 0.045 };
   let hold = null;
+  let burst = null; // { left, x, y, t }
+  const chargeOf = (h) => Math.max(0, Math.min(1, (h.t - CHARGE.delay) / (CHARGE.full - CHARGE.delay)));
+  function releaseHold(fire) {
+    const h = hold;
+    hold = null;
+    TC.effects.charge = null;
+    if (!h || !fire || h.t < CHARGE.delay) return;
+    const p = chargeOf(h);
+    const n = p >= 1 ? CHARGE.maxShots : Math.round(CHARGE.shots * p);
+    if (n < 1) return;
+    burst = { left: n, x: h.x, y: h.y, t: 0 };
+    TC.events.emit("chargeRelease", { x: h.x, y: h.y, n, max: p >= 1 });
+  }
   function tickHold(dt) {
-    if (!hold || TC.ipo.visible() || TC.offline.visible()) return;
-    hold.t += dt;
-    if (hold.t < HOLD.delay) return;
-    const rate = HOLD.from + (HOLD.to - HOLD.from) * Math.min(1, (hold.t - HOLD.delay) / HOLD.ramp);
-    hold.acc += rate * dt;
-    while (hold.acc >= 1) {
-      hold.acc -= 1;
-      // a little spread so the shots don't stack on one pixel
-      TC.market.buy(hold.x + (Math.random() - 0.5) * 18, hold.y + (Math.random() - 0.5) * 18);
-      haptic();
+    if (hold && !TC.ipo.visible() && !TC.offline.visible()) {
+      hold.t += dt;
+      const p = chargeOf(hold);
+      TC.effects.charge = hold.t >= CHARGE.delay ? { x: hold.x, y: hold.y, p, max: p >= 1 } : null;
+      if (p >= 1 && !hold.maxed) {
+        hold.maxed = true;
+        TC.events.emit("chargeMax", { x: hold.x, y: hold.y });
+        try { navigator.vibrate && navigator.vibrate([15, 30, 15]); } catch (e) { /* not supported */ }
+      }
+    }
+    if (burst) {
+      burst.t -= dt;
+      while (burst && burst.t <= 0) {
+        burst.t += CHARGE.gap;
+        const a = Math.random() * Math.PI * 2, r = Math.random() * 26;
+        TC.market.buy(burst.x + Math.cos(a) * r, burst.y + Math.sin(a) * r);
+        if (--burst.left <= 0) burst = null;
+      }
     }
   }
 
@@ -127,15 +149,16 @@ window.TC = window.TC || {};
       const r = wrap.getBoundingClientRect();
       TC.market.buy(e.clientX - r.left, e.clientY - r.top);
       haptic();
-      // Start a hold: keep the finger down and it fires buys on its own (see tickHold)
-      hold = hold ? null : { id: e.pointerId, x: e.clientX - r.left, y: e.clientY - r.top, t: 0, acc: 0 };
+      // Start charging (see tickHold). A second finger means a pinch: cancel the charge.
+      if (hold && hold.id !== e.pointerId) releaseHold(false);
+      else hold = { id: e.pointerId, x: e.clientX - r.left, y: e.clientY - r.top, t: 0, maxed: false };
     });
     wrap.addEventListener("pointermove", (e) => {
       if (!hold || e.pointerId !== hold.id) return;
       const r = wrap.getBoundingClientRect();
       hold.x = e.clientX - r.left; hold.y = e.clientY - r.top;
     });
-    const release = (e) => { if (hold && e.pointerId === hold.id) hold = null; };
+    const release = (e) => { if (hold && e.pointerId === hold.id) releaseHold(e.type !== "pointercancel"); };
     wrap.addEventListener("pointerup", release);
     wrap.addEventListener("pointercancel", release);
     wrap.addEventListener("pointerleave", release);
