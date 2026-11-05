@@ -1,4 +1,4 @@
-// Market seasons: the whole market cycles Bull -> Bear -> (sometimes Sideways), 2-4 minutes each,
+// Market seasons: the whole market cycles Bull (60-100s) -> Bear (45-75s) -> sometimes Sideways (45-75s),
 // with a 15s warning before each change. Other modules read the current season's modifiers:
 //   market.js   buyerMult(), genMult(id) buyers faster in a bull, slower in a bear; bear nerfs retail + finfluencers
 //   moves.js    moveBag()               silent swings lean up / down / choppy
@@ -17,6 +17,7 @@ TC.seasons = (() => {
   const SEASONS = {
     bull: {
       name: "Bull market", short: "BULL", buyer: 1.5, beat: 0.7, gap: 0.9, peakExtra: 1, dipLine: 0.88, stack: 1,
+      dur: [60, 100],
       news: { pump: 3, short: 2, earnings: 2, headline: 1, flash: 0.5 },
       bag: ["spike", "spike", "run", "run", "chop", "drop", "wick"],
       bleed: 0,
@@ -31,6 +32,7 @@ TC.seasons = (() => {
     },
     side: {
       name: "Sideways market", short: "FLAT", buyer: 1, beat: 0.55, gap: 1.5, peakExtra: 0, dipLine: 0.88, stack: 1,
+      dur: [45, 75],
       news: { headline: 1, flash: 1, short: 1, earnings: 1, pump: 1 },
       bag: ["chop", "chop", "chop", "wick", "spike", "drop"],
       bleed: 0,
@@ -79,7 +81,7 @@ TC.seasons = (() => {
   function restore() {
     const sv = st().season;
     if (!sv || !SEASONS[sv.id]) return false;
-    id = sv.id; left = sv.left; next = SEASONS[sv.next] ? sv.next : pickNext(); warned = !!sv.warned;
+    id = sv.id; left = Math.min(sv.left, cur().dur[1]); // old saves may hold a longer season next = SEASONS[sv.next] ? sv.next : pickNext(); warned = !!sv.warned;
     document.documentElement.dataset.season = id;
     return true;
   }
