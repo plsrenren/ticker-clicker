@@ -73,7 +73,7 @@ TC.hype = (() => {
 
   function status(m) {
     const s = st();
-    if (s.bestPrice < m.unlock) return { state: "locked", sub: TC.format.axis(m.unlock) };
+    if (s.bestPrice < m.unlock) return { state: "locked", sub: TC.format.axis(TC.market.marketCap(m.unlock)) + " cap" };
     const left = (readyAt[m.id] || 0) - s.clock;
     if (left > 0) {
       const locked = s.clock < lockedUntil;

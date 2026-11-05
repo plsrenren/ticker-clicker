@@ -168,7 +168,19 @@ window.TC = window.TC || {};
     try { frame(now); } catch (err) { reportError(err); }
   }
 
+  // Adaptive quality: if frames run slow (under ~45fps) for 2s, drop the canvas glow; bring it back after 6s of smooth frames
+  TC.perf = { low: false, avg: 16, slowFor: 0, fastFor: 0 };
+  function trackPerf(ms) {
+    const p = TC.perf;
+    if (ms > 250) return; // tab switch, not a slow frame
+    p.avg += (ms - p.avg) * 0.1;
+    if (p.avg > 22) { p.slowFor += ms; p.fastFor = 0; } else if (p.avg < 18) { p.fastFor += ms; p.slowFor = 0; }
+    if (!p.low && p.slowFor > 2000) { p.low = true; p.slowFor = 0; }
+    if (p.low && p.fastFor > 6000) { p.low = false; p.fastFor = 0; }
+  }
+
   function frame(now) {
+    trackPerf(now - last);
     const dt = Math.max(0, Math.min(0.1, (now - last) / 1000)); // clamp: no jump after a background tab, no negative first frame
     last = now;
     // Never let a bad number poison the save

@@ -70,7 +70,7 @@ TC.ui = (() => {
         r.btn.classList.add("locked");
         r.btn.disabled = true;
         r.name.textContent = "???";
-        r.desc.textContent = "Reach a " + f.money(it.reveal * 0.3) + " share price";
+        r.desc.textContent = "Reach " + f.money(TC.market.marketCap(it.reveal * 0.3)) + " market cap";
         r.cost.textContent = "";
         r.count.textContent = "";
         continue;
@@ -202,7 +202,7 @@ TC.ui = (() => {
     $("privateFill").style.width = (prog * 100).toFixed(1) + "%";
     $("privatePts").textContent = unlocked
       ? f.int(s.prestige.points) + " pts · " + bonus(s.prestige.points)
-      : f.axis(s.bestPrice) + " / " + f.axis(pc.minPrice);
+      : f.axis(TC.market.marketCap(s.bestPrice)) + " / " + f.axis(TC.market.marketCap(pc.minPrice)) + " cap";
     if (!unlocked) {
       btn.disabled = true;
     } else {

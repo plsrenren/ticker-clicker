@@ -13,6 +13,8 @@ TC.effects = (() => {
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const token = (name) => getComputedStyle(document.documentElement).getPropertyValue("--" + name).trim();
   let C = {};
+  // Canvas glow (shadowBlur) is the most expensive thing we draw; main.js turns it off on slow devices
+  const glow = () => (TC.perf && TC.perf.low ? 0 : 1);
 
   function resize() {
     const r = canvas.getBoundingClientRect();
@@ -44,7 +46,7 @@ TC.effects = (() => {
           g.save();
           g.strokeStyle = color;
           g.shadowColor = C.line;
-          g.shadowBlur = 14;
+          g.shadowBlur = (14) * glow();
           g.globalAlpha = (1 - p) * 0.9;
           g.lineWidth = 2.5 * (1 - p) + 0.5;
           g.beginPath(); g.arc(x, y, max * ease, 0, Math.PI * 2); g.stroke();
@@ -78,7 +80,7 @@ TC.effects = (() => {
           g.globalAlpha = 1 - p * p;
           g.fillStyle = color;
           g.shadowColor = color;
-          g.shadowBlur = 8;
+          g.shadowBlur = (8) * glow();
           if (glyph) {
             g.translate(x, y);
             g.rotate(spin * t);
@@ -124,7 +126,7 @@ TC.effects = (() => {
           g.save();
           g.lineCap = "round";
           g.shadowColor = C.line;
-          g.shadowBlur = 12;
+          g.shadowBlur = (12) * glow();
           for (let i = 1; i < trail.length; i++) {
             const q = i / trail.length;
             g.globalAlpha = q * fade;
@@ -156,7 +158,7 @@ TC.effects = (() => {
           g.lineCap = "round";
           g.strokeStyle = color;
           g.shadowColor = color;
-          g.shadowBlur = 20;
+          g.shadowBlur = (20) * glow();
           g.lineWidth = 3.2;
           for (let i = from; i < to; i++) {
             const d = Math.abs(i + 0.5 - head) / width;
@@ -201,7 +203,7 @@ TC.effects = (() => {
           g.globalAlpha = 1 - p * p;
           g.fillStyle = color;
           g.shadowColor = color;
-          g.shadowBlur = 16;
+          g.shadowBlur = (16) * glow();
           g.font = `800 ${size}px "Bricolage Grotesque", system-ui, sans-serif`;
           g.textAlign = "center";
           g.fillText(text, x, y - 40 * p);
@@ -255,7 +257,7 @@ TC.effects = (() => {
           g.globalAlpha = 1 - p;
           g.strokeStyle = color;
           g.shadowColor = color;
-          g.shadowBlur = 12;
+          g.shadowBlur = (12) * glow();
           g.lineWidth = 2;
           g.beginPath(); g.arc(x, y, max * p, 0, Math.PI * 2); g.stroke();
           g.shadowBlur = 0;
@@ -306,7 +308,7 @@ TC.effects = (() => {
         g.globalAlpha = alpha;
         g.fillStyle = color;
         g.shadowColor = color;
-        g.shadowBlur = i === 0 ? 18 + it.pop * 14 : 0;
+        g.shadowBlur = (i === 0 ? 18 + it.pop * 14 : 0) * glow();
         g.font = `800 ${size}px "Bricolage Grotesque", system-ui, sans-serif`;
         g.fillText((it.sign > 0 ? "$" : "-$") + TC.format.money(it.amount).slice(1), b.r - 14, it.y);
         y += size * 0.95;
