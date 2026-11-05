@@ -65,15 +65,18 @@ TC.config = {
   // One-time upgrades.
   // kind "mult": multiplies price per tap.   kind "cpsPct": each tap adds a % of buyers' per-second volume.
   // kind "gen": multiplies all buyers.        kind "yield": multiplies cash per $1 of new highs.
+  // kind "dividend": pays cash every 30s and drops the price by value (see dividends.js).
   upgrades: [
     { id: "market",  name: "Market Orders",   desc: "Buys fill instantly. 2x per buy.",       cost: 50,      kind: "mult",   value: 2 },
-    { id: "div1",    name: "Dividend Hike",   desc: "50% more cash from every new high.",       cost: 250,     kind: "yield",  value: 1.5 },
+    { id: "div1",    name: "Investor Hype",   desc: "50% more cash from every new high.",       cost: 250,     kind: "yield",  value: 1.5 },
+    { id: "divq",    name: "Quarterly Dividend", desc: "Every 30s: pays cash, price drops 1%. Toggle it on the desk.", cost: 500, kind: "dividend", value: 0.01 },
     { id: "margin",  name: "Margin Account",  desc: "Borrowed money buys more. 2x per buy.",  cost: 500,     kind: "mult",   value: 2 },
     { id: "beat",    name: "Earnings Beat",   desc: "Every buyer buys 2x as much.",           cost: 2500,    kind: "gen",    value: 2 },
     { id: "options", name: "Call Options",    desc: "Leverage on every order. 3x per buy.",   cost: 6000,    kind: "mult",   value: 3 },
-    { id: "div2",    name: "Special Dividend", desc: "2x cash from every new high.",           cost: 20000,   kind: "yield",  value: 2 },
+    { id: "div2",    name: "Analyst Upgrade", desc: "2x cash from every new high.",           cost: 20000,   kind: "yield",  value: 2 },
     { id: "algo",    name: "Algo Execution",  desc: "Each buy adds 2% of buy volume.",        cost: 40000,   kind: "cpsPct", value: 0.02 },
     { id: "squeeze", name: "Short Squeeze",   desc: "Every buyer buys 3x as much.",           cost: 150000,  kind: "gen",    value: 3 },
+    { id: "divA",    name: "Dividend Aristocrat", desc: "Dividends pay out 1.5% more of the price each time.", cost: 300000, kind: "dividend", value: 0.015 },
     { id: "dark",    name: "Dark Pool Access", desc: "Hidden size. 5x per buy.",               cost: 500000,  kind: "mult",   value: 5 },
     { id: "div3",    name: "Buyback Program", desc: "2x cash from every new high.",           cost: 2000000, kind: "yield",  value: 2 },
     { id: "hft",     name: "Co-located Servers", desc: "Each buy adds 5% more of buy volume.", cost: 5000000, kind: "cpsPct", value: 0.05 },

@@ -28,7 +28,8 @@ TC.state = (() => {
       bestPrice: 0,      // best price this run (drives reveals and founder points)
       season: null,
       lastSellAt: -1e9,  // game clock of your last sell (SEC fine window)
-      debuffs: {},       // debuff id -> game clock time it ends      // current market season { id, left, next, warned }, so reloads don't reset it
+      debuffs: {},       // debuff id -> game clock time it ends
+      dividendsOn: true, // dividend payouts switched on (dividends.js)      // current market season { id, left, next, warned }, so reloads don't reset it
 
       // ---- meta ----
       prestige: { points: 0, count: 0 },

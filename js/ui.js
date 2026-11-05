@@ -47,6 +47,7 @@ TC.ui = (() => {
     if (u.kind === "mult") return u.value + "x taps";
     if (u.kind === "gen") return u.value + "x buyers";
     if (u.kind === "yield") return u.value + "x cash from highs";
+    if (u.kind === "dividend") return "pays cash, price −" + +(u.value * 100).toFixed(1) + "% / 30s";
     if (u.kind === "cpsPct") return "taps add " + Math.round(u.value * 100) + "% of buyers";
     return u.desc;
   }

@@ -532,6 +532,11 @@ TC.effects = (() => {
       api.spawn("floatText", { x: (x ?? tip.x) - 20, y: (y ?? tip.y) - 20, text: "HALTED", color: C.muted || C.down, size: 13, life: 0.6 });
     });
 
+    TC.events.on("dividend", ({ cash }) => {
+      const tip = TC.chart.tip();
+      api.spawn("floatText", { x: tip.x - 120, y: tip.y - 30, text: "DIVIDEND +" + TC.format.money(cash), color: C.up, size: 20, life: 1.6 });
+      api.spawn("ring", { x: tip.x, y: tip.y, color: C.up, max: 70, life: 0.6 });
+    });
     TC.events.on("fine", ({ amount }) => {
       api.spawn("floatText", { x: w / 2 - 30, y: h * 0.42, text: "SEC FINE −" + TC.format.money(amount), color: C.down, size: 30, life: 2 });
       api.spawn("flash", { color: C.down, life: 0.6, strength: 0.3 }, 3);
