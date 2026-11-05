@@ -1,5 +1,5 @@
-// Market seasons: the whole market cycles Bull (60-100s) -> Bear (45-75s) -> sometimes Sideways (45-75s),
-// with a 15s warning before each change. Other modules read the current season's modifiers:
+// Market seasons: the whole market cycles Bull (25-140s) -> Bear (20-100s) -> sometimes Sideways (20-100s).
+// Lengths are random and hidden: the player only sees the announcement when a season starts, never a countdown. Other modules read the current season's modifiers:
 //   market.js   buyerMult(), genMult(id) buyers faster in a bull, slower in a bear; bear nerfs retail + finfluencers
 //   moves.js    moveBag()               silent swings lean up / down / choppy
 //   news.js     pickNews(), beatOdds(), gapMult()   which events fire, and how often
@@ -11,28 +11,27 @@ TC.seasons = (() => {
   const st = () => TC.state.data;
   const $ = (id) => document.getElementById(id);
   const rand = (a, b) => a + Math.random() * (b - a);
-  const WARN = 15;
   const MIN_PRICE = 20;
 
   const SEASONS = {
     bull: {
       name: "Bull market", short: "BULL", buyer: 1.5, beat: 0.7, gap: 0.9, peakExtra: 1, dipLine: 0.88, stack: 1,
-      dur: [60, 100],
+      dur: [25, 140],
       news: { pump: 3, short: 2, earnings: 2, headline: 1, flash: 0.5 },
       bag: ["spike", "spike", "run", "run", "chop", "drop", "wick"],
       bleed: 0,
     },
     bear: {
-      // Short and brutal: 45-75s. Retail traders and finfluencers mostly sit it out.
+      // Short and brutal: 20-100s. Retail traders and finfluencers mostly sit it out.
       name: "Bear market", short: "BEAR", buyer: 0.7, beat: 0.3, gap: 0.45, peakExtra: 0, dipLine: 0.92, stack: 1.5,
-      dur: [45, 75], amp: 1.7, gen: { retail: 0.15, influ: 0.15 },
+      dur: [20, 100], amp: 1.7, gen: { retail: 0.15, influ: 0.15 },
       news: { headline: 3, flash: 2, short: 2, earnings: 1, pump: 0.5 },
       bag: ["drop", "drop", "slide", "slide", "wick", "chop", "spike"],
       bleed: 0.004, // fraction of price lost per second (about -20% over a minute)
     },
     side: {
       name: "Sideways market", short: "FLAT", buyer: 1, beat: 0.55, gap: 1.5, peakExtra: 0, dipLine: 0.88, stack: 1,
-      dur: [45, 75],
+      dur: [20, 100],
       news: { headline: 1, flash: 1, short: 1, earnings: 1, pump: 1 },
       bag: ["chop", "chop", "chop", "wick", "spike", "drop"],
       bleed: 0,
@@ -93,16 +92,14 @@ TC.seasons = (() => {
     const el = $("season");
     if (!el) return;
     if (!id) { if (lastKey) { el.hidden = true; lastKey = ""; } return; }
-    const secs = Math.ceil(left);
-    const text = left <= WARN
-      ? (SEASONS[next] || cur()).short + " IN " + secs + "s"
-      : cur().short + " · " + Math.floor(secs / 60) + ":" + String(secs % 60).padStart(2, "0");
-    const key = id + text + (left <= WARN);
+    // Only the season's name: how long it lasts is a secret
+    const text = cur().short;
+    const key = id + text;
     if (key === lastKey) return;
     lastKey = key;
     el.hidden = false;
     el.dataset.season = id;
-    el.dataset.warn = left <= WARN ? next : "";
+    el.dataset.warn = "";
     el.textContent = text;
   }
 
@@ -160,10 +157,6 @@ TC.seasons = (() => {
       }
       if (!SEASONS[next]) next = pickNext();
       left -= dt;
-      if (!warned && left <= WARN) {
-        warned = true;
-        TC.events.emit("seasonWarn", { next, name: (SEASONS[next] || cur()).name });
-      }
       if (left <= 0) enter(next);
       persist();
       if (shock) {
