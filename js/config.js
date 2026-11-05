@@ -17,7 +17,7 @@ TC.config = {
   //   NEW HIGHS  every $1 the price climbs above its record pays cashOut x your shares, and you sell
   //              the matching shares (about cashOut x shares x rise / price), so your stake shrinks
   //   SELL       sells sell.stakePct of your shares at once
-  //   BUYBACK    spend cash to buy 0.25% of the company back at the current price (+ fee)
+  //   BUYBACK    spend cash to buy 0.05% of the company back at the current price (+ fee)
   //   Dividends pay cash without selling shares. Going private resets the stake.
   ipoPrice: 0.1,             // share price you list at (a penny stock)
   sharesOutstanding: 1000000, // market cap = share price x this (the headline number)
@@ -25,12 +25,12 @@ TC.config = {
     start: 100000,       // 10% of the company at IPO
     cashOut: 0.05,       // cash per $1 of new high = this x your shares (5,000 at a 10% stake)
     floor: 20000,        // new highs stop selling shares below 2%; they still pay
-    buyback: 2500,       // shares per buyback (0.25% of the company)
+    buyback: 500,        // shares per buyback (0.05% of the company; small enough to afford in a bear)
     fee: 0.03,           // buybacks cost 3% over your record price...
-    heat: 0.05,          // ...plus 5% more per recent buyback...
+    heat: 0.01,          // ...plus 1% more per recent buyback (5 buybacks = the old +5% per 0.25%)...
     heatFade: 0.05 / 60, // ...fading 5% per minute
     max: 250000,         // can't own more than 25%
-    insiderBump: 0.03,   // bear market: a buyback is priced at the current price, bumps it 3%...
+    insiderBump: 0.03,   // bear market: a buyback is priced at the current price, bumps it 3% (once per calm window)...
     insiderCalm: 10,     // ...and pauses the bear bleed for 10s
     hostileShares: 10000, // losing a hostile bid sells 1% of the company (at most 20% of your shares) at the bid
     dipShares: 5000,     // BUY THE DIP also buys up to 0.5% of the company at the dip price (no fee), once per event

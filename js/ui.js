@@ -350,7 +350,7 @@ TC.ui = (() => {
       const full = st().shares + cfg.stake.buyback > cfg.stake.max;
       bb.disabled = !TC.market.canBuyback();
       const off = TC.market.buybackDiscount();
-      bb.textContent = full ? "Stake maxed at 25%" : "Buy back 0.25% · " + f.money(TC.market.buybackCost()) + (off >= 0.01 ? " · BEAR " + Math.round(off * 100) + "% OFF" : "");
+      bb.textContent = full ? "Stake maxed at 25%" : "Buy back " + +(cfg.stake.buyback / cfg.sharesOutstanding * 100).toFixed(2) + "% · " + f.money(TC.market.buybackCost()) + (off >= 0.01 ? " · BEAR " + Math.round(off * 100) + "% OFF" : "");
       bb.dataset.bear = TC.market.buybackBear() && !full ? "1" : "";
       renderAchievements();
 

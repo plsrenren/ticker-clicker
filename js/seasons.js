@@ -151,6 +151,7 @@ TC.seasons = (() => {
     set(newId) { if (SEASONS[newId]) enter(newId); },
     // Pause the bear bleed for a few seconds (insider buying)
     calm(secs) { calmUntil = st().clock + secs; },
+    calming: () => st().clock < calmUntil,
 
     init() {
       TC.events.on("news", (e) => outcome(e.type));

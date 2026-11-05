@@ -99,8 +99,10 @@ TC.market = (() => {
       s.buybackAt = s.clock;
       // Insider buying: the founder buying in a bear calms the market (+3%, bear bleed paused 10s)
       const insider = api.buybackBear();
-      if (insider) { api.shift(cfg.stake.insiderBump, "insider"); TC.seasons.calm(cfg.stake.insiderCalm); }
-      TC.events.emit("buyback", { cost, shares: cfg.stake.buyback, insider });
+      // the bump fires once per calm window, so spamming small buybacks can't pump the price
+      const bump = insider && !TC.seasons.calming();
+      if (bump) { api.shift(cfg.stake.insiderBump, "insider"); TC.seasons.calm(cfg.stake.insiderCalm); }
+      TC.events.emit("buyback", { cost, shares: cfg.stake.buyback, insider: bump });
       return true;
     },
 

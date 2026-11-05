@@ -612,7 +612,7 @@ TC.effects = (() => {
       }
     });
     TC.events.on("buyback", ({ cost, insider }) => {
-      api.spawn("floatText", { x: w / 2 - 60, y: h * 0.4, text: "BUYBACK +0.25% STAKE", color: C.up, size: 22, life: 1.4 });
+      api.spawn("floatText", { x: w / 2 - 60, y: h * 0.4, text: "BUYBACK +" + +(TC.config.stake.buyback / TC.config.sharesOutstanding * 100).toFixed(2) + "% STAKE", color: C.up, size: 22, life: 1.4 });
       if (insider) {
         api.spawn("floatText", { x: w / 2 - 60, y: h * 0.47, text: "INSIDER BUYING +3%", color: C.up, size: 18, life: 1.6 });
         api.spawn("pulse", { color: C.up, speed: 220, width: 30, life: 1, strength: 1.2 });
