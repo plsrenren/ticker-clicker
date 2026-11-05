@@ -16,8 +16,22 @@ TC.news = (() => {
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
   const sym = () => "$" + st().symbol;
   const pct = (f) => (f >= 0 ? "+" : "−") + Math.round(Math.abs(f) * 100) + "%";
+  // Size of the company drives how big the news is. Small caps get small, local stories and gentle moves;
+  // giants get federal investigations and violent ones. Every event's move size is multiplied by
+  //   K = cfg.news.intensity.min at $5M market cap, +perDecade for every 10x after that, capped at max
+  const cap = () => TC.market.marketCap(st().basePrice);
+  const I = cfg.news.intensity;
+  const intensity = () => Math.max(I.min, Math.min(I.max, I.min + I.perDecade * Math.log10(Math.max(1, cap() / 5e6))));
+  // A move size scaled by intensity (never a 90%+ wipeout)
+  const mag = (a, b) => Math.min(0.85, rand(a, b) * intensity());
+  // "small" under $100M, "big" from $50B: flavor.js pools named key + "Small" / key + "Big" are used when they exist
+  const tier = () => (cap() < 1e8 ? "Small" : cap() >= 5e10 ? "Big" : "");
   // Flavor text (flavor.js): L("key", { r: "$SNEK", pct: "+20%" })
-  const L = (key, vars) => TC.flavor.line(key, Object.assign({ you: sym() }, vars));
+  const L = (key, vars) => {
+    const t = tier(), pools = TC.flavor.pools;
+    const k = t && pools[key + t] && Math.random() < 0.75 ? key + t : key;
+    return TC.flavor.line(k, Object.assign({ you: sym() }, vars));
+  };
 
   let active = null;
   let nextAt = null;
@@ -72,7 +86,7 @@ TC.news = (() => {
     headline() {
       const T = 4, CH = 20;
       let t = 0, tick = 0, done = 0, applied = 0;
-      let remaining = rand(0.2, 0.4);
+      let remaining = mag(0.2, 0.4);
       const full = remaining;
       return {
         start() {
@@ -106,7 +120,7 @@ TC.news = (() => {
 
     // Flash crash: vertical drop, then most of it comes back.
     flash() {
-      const drop = rand(0.3, 0.5);
+      const drop = mag(0.3, 0.5);
       const back = rand(0.6, 0.8);
       let t = 0, phase = 0, startPrice = 0, bottom = 0;
       return {
@@ -157,14 +171,14 @@ TC.news = (() => {
             banner.sub(Math.max(0, need - taps) + " taps left · " + Math.max(0, T - t).toFixed(1) + "s");
             if (taps >= need) {
               resolved = true;
-              const up = rand(0.12, 0.2);
+              const up = mag(0.12, 0.2);
               banner.show({ tag: "SHORT SQUEEZE", tone: "up", text: L("squeeze", { pct: pct(up) }), sub: "" });
               TC.events.emit("news", { type: "squeeze", tone: "up", big: true });
               TC.market.shift(up, "short");
               t = T; // start the outro timer
             } else if (t >= T) {
               resolved = true;
-              const down = rand(0.2, 0.3);
+              const down = mag(0.2, 0.3);
               banner.show({ tag: "SHORTS WIN", tone: "down", text: L("shortWin", { pct: pct(-down) }), sub: "" });
               TC.events.emit("news", { type: "shortwin", tone: "down", big: true });
               TC.market.shift(-down, "short");
@@ -180,7 +194,7 @@ TC.news = (() => {
     earnings(opts = {}) {
       const T = 5;
       const beat = Math.random() < (opts.beatOdds ?? (TC.seasons ? TC.seasons.beatOdds() : 0.55));
-      const move = beat ? rand(0.15, 0.3) : -rand(0.1, 0.25);
+      const move = beat ? mag(0.15, 0.3) : -mag(0.1, 0.25);
       let t = 0, done = false, earnLine = "";
       return {
         start() {
@@ -206,13 +220,13 @@ TC.news = (() => {
 
     // Pump and dump: rockets up 40-80%, then gives back 75-125% of the gain (can end below where it started).
     pump() {
-      const gain = rand(0.4, 0.8);
+      const gain = mag(0.4, 0.8);
       const giveBack = rand(0.75, 1.25);
       let t = 0, phase = 0, start = 0, peak = 0;
       return {
         start() {
           start = st().basePrice;
-          banner.show({ tag: "PUMP", tone: "up", text: L("pump", { who: TC.flavor.pick("handles") }), sub: "" });
+          banner.show({ tag: "PUMP", tone: "up", text: L("pump", { who: TC.flavor.pick(TC.flavor.pools["handles" + tier()] ? "handles" + tier() : "handles") }), sub: "" });
           TC.events.emit("news", { type: "pump", tone: "up", big: true });
         },
         update(dt) {
@@ -237,7 +251,7 @@ TC.news = (() => {
     // Takeover rumor (good): a rival "wants to buy you". Big pump, then the deal falls through.
     // Sell near the top to keep the gains (it counts as an event peak).
     takeover() {
-      const R = rival(), gain = rand(0.25, 0.4), keep = 0.3;
+      const R = rival(), gain = mag(0.25, 0.4), keep = 0.3;
       let t = 0, phase = 0, start = 0, peak = 0;
       return {
         start() {
@@ -273,7 +287,7 @@ TC.news = (() => {
           TC.events.emit("news", { type: "rivalScandal", tone: "up" });
           TC.rivals.move(R, -rand(0.3, 0.5), 10);
           boostUntil = st().clock + 10;
-          TC.market.shift(rand(0.05, 0.1), "rivalScandal");
+          TC.market.shift(mag(0.05, 0.1), "rivalScandal");
         },
         update(dt) { t += dt; return t < 4; },
       };
@@ -281,7 +295,7 @@ TC.news = (() => {
 
     // Partnership (good): slow rally, and the rival moves with you for a minute.
     partner() {
-      const R = rival(), gain = rand(0.15, 0.25);
+      const R = rival(), gain = mag(0.15, 0.25);
       let t = 0, start = 0;
       return {
         start() {
@@ -309,7 +323,7 @@ TC.news = (() => {
           banner.show({ tag: "INDEX INCLUSION", tone: "up", text: L("index", { r: "$" + R }), sub: "Buyers +25% for the rest of this run" });
           TC.events.emit("news", { type: "index", tone: "up", big: true });
           TC.rivals.move(R, -rand(0.15, 0.25), 10);
-          TC.market.shift(rand(0.08, 0.12), "index");
+          TC.market.shift(mag(0.08, 0.12), "index");
         },
         update(dt) { t += dt; return t < 4.5; },
       };
@@ -335,13 +349,13 @@ TC.news = (() => {
               resolved = true;
               banner.show({ tag: "KNOCKOFF FLOPS", tone: "up", text: L("copycatWin", { r: "$" + R }), sub: "" });
               TC.rivals.move(R, -rand(0.15, 0.25), 4);
-              TC.market.shift(rand(0.04, 0.07), "copycat");
+              TC.market.shift(mag(0.04, 0.07), "copycat");
               t = T;
             } else if (t >= T) {
               resolved = true;
               banner.show({ tag: "RETAIL DEFECTS", tone: "down", text: L("copycatLose", { r: "$" + R }), sub: "Retail traders −30% for 20s" });
               TC.debuffs.add("copycat");
-              TC.market.shift(-rand(0.06, 0.1), "copycat");
+              TC.market.shift(-mag(0.06, 0.1), "copycat");
             }
             return true;
           }
@@ -358,7 +372,7 @@ TC.news = (() => {
       return {
         start() {
           start = st().basePrice;
-          bid = start * rand(0.65, 0.75);
+          bid = start * (1 - mag(0.25, 0.35));
           banner.show({ tag: "HOSTILE BID", tone: "down", text: L("hostile", { r: "$" + R, bid: TC.format.money(bid) }), sub: "Tap " + need + " times to reject it", meter: { a: 0, b: 0 } });
           TC.events.emit("news", { type: "hostile", tone: "down", big: true });
         },
@@ -375,7 +389,7 @@ TC.news = (() => {
               resolved = true;
               banner.show({ tag: "BID REJECTED", tone: "up", text: L("hostileWin", { r: "$" + R }), sub: "" });
               TC.rivals.move(R, -rand(0.08, 0.14), 4);
-              TC.market.shift(rand(0.1, 0.15), "hostile");
+              TC.market.shift(mag(0.1, 0.15), "hostile");
               t = T;
             } else if (t >= T) {
               resolved = true;
@@ -396,7 +410,7 @@ TC.news = (() => {
 
     // Sector crash (bad): the whole tape goes red and drags you with it. Common in bear markets.
     sector() {
-      const A = rival(), B = rival([A]), drop = rand(0.15, 0.25);
+      const A = rival(), B = rival([A]), drop = mag(0.15, 0.25);
       let t = 0, start = 0;
       return {
         start() {

@@ -74,6 +74,44 @@ TC.flavor = (() => {
     handles: ["@moonboy_capital", "@stonkwizard", "@diamondhandz", "@yolo_daily", "@chartwhisperer", "@lambo_or_bust", "@degen_dad", "@bagholder420"],
     pumpOut: ["Early buyers take profits…", "The influencers are selling…", "Somebody's exiting…"],
 
+    // ---- size tiers: news.js uses key + "Small" under a $100M market cap and key + "Big" from $50B ----
+    headlineSmall: [
+      "{you}: Local blog questions the business model",
+      "{you}: CEO's mom unfollows the company page",
+      "{you}: Only office plant dies, staff morale low",
+      "{you}: Yelp review calls HQ \"a garage\"",
+      "{you}: Website down, intern was on vacation",
+      "{you}: Accountant is also the delivery driver",
+      "{you}: Annual meeting attended by 3 people and a dog",
+      "{you}: Founder's group chat leaks: \"lol we're broke\"",
+    ],
+    headlineBig: [
+      "{you}: FBI raids headquarters",
+      "{you}: Senate subpoenas the CEO",
+      "{you}: DOJ opens antitrust probe",
+      "{you}: EU hands down an $8 billion fine",
+      "{you}: Whistleblower testifies before Congress",
+      "{you}: Three countries ban the flagship product",
+      "{you}: Central bank calls it \"a systemic risk\"",
+      "{you}: Global outage takes down half the internet",
+    ],
+    shortSmall: [
+      "A guy on a forum is shorting {you}",
+      "Some newsletter calls {you} \"overhyped\"",
+      "A college finance club bets against {you}",
+    ],
+    shortBig: [
+      "The world's biggest hedge funds pile into {you} shorts",
+      "Billionaire bear goes on TV: \"{you} is the bubble\"",
+      "Short interest in {you} hits a record $40 billion",
+    ],
+    beatSmall: ["Turned a profit for once. {you} {pct}", "Sold more than 12 units. {you} {pct}", "First positive quarter ever. {you} {pct}"],
+    beatBig: ["Biggest quarter in corporate history. {you} {pct}", "{you} earns more than most countries. {pct}", "Profit tops $100 billion. {you} {pct}"],
+    missSmall: ["Revenue was mostly the founder's savings. {you} {pct}", "Sold 4 units, returned 3. {you} {pct}", "Ran out of money for the earnings call. {you} {pct}"],
+    missBig: ["First revenue drop in a decade. {you} {pct}", "Guidance slashed, world markets wobble. {you} {pct}", "{you} misses by $20 billion. {pct}"],
+    handlesSmall: ["@my_cousin_trades", "@dave_from_accounting", "@pennystockpete", "@300followers", "@uncle_gary_invests"],
+    handlesBig: ["@the_richest_man", "@famous_rapper", "@ex_president", "@pop_superstar", "@sovereign_fund_ceo"],
+
     // ---- rival events ----
     takeover: [
       "{r} in talks to buy {you}",
