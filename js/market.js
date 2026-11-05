@@ -27,6 +27,7 @@ TC.market = (() => {
   let earnRate = 0;    // smoothed cash per second, for the UI
 
   function upgradeProduct(kind) {
+    if (TC.debuffs && TC.debuffs.active("poach")) return 1; // exec poached: upgrades off
     return cfg.upgrades.reduce((m, u) => (st().upgrades[u.id] && u.kind === kind ? m * u.value : m), 1);
   }
 
@@ -48,12 +49,12 @@ TC.market = (() => {
     // Price added per second by all buyers.
     perSecond() {
       const raw = cfg.generators.reduce((sum, g) => sum + g.rate * (st().owned[g.id] || 0) * (TC.seasons ? TC.seasons.genMult(g.id) : 1) * (TC.debuffs ? TC.debuffs.genMult(g.id) : 1), 0);
-      return raw * upgradeProduct("gen") * api.metaMult() * (TC.hype ? TC.hype.buyerMult() : 1) * (TC.seasons ? TC.seasons.buyerMult() : 1) * (TC.debuffs ? TC.debuffs.buyerMult() : 1);
+      return raw * upgradeProduct("gen") * api.metaMult() * (TC.hype ? TC.hype.buyerMult() : 1) * (TC.seasons ? TC.seasons.buyerMult() : 1) * (TC.debuffs ? TC.debuffs.buyerMult() : 1) * (TC.news && TC.news.buyerMult ? TC.news.buyerMult() : 1);
     },
 
     // Price added per tap.
     perClick() {
-      const pct = cfg.upgrades.reduce((p, u) => (st().upgrades[u.id] && u.kind === "cpsPct" ? p + u.value : p), 0);
+      const pct = TC.debuffs && TC.debuffs.active("poach") ? 0 : cfg.upgrades.reduce((p, u) => (st().upgrades[u.id] && u.kind === "cpsPct" ? p + u.value : p), 0);
       return cfg.baseClick * upgradeProduct("mult") * api.metaMult() * (TC.hype ? TC.hype.tapMult() : 1) * (TC.debuffs ? TC.debuffs.tapMult() : 1) + api.perSecond() * pct;
     },
 
@@ -262,7 +263,7 @@ TC.market = (() => {
       if (!s.listed) return;
       s.clock += dt;
 
-      const m = upgradeProduct("gen") * api.metaMult() * (TC.hype ? TC.hype.buyerMult() : 1) * (TC.seasons ? TC.seasons.buyerMult() : 1) * (TC.debuffs ? TC.debuffs.buyerMult() : 1);
+      const m = upgradeProduct("gen") * api.metaMult() * (TC.hype ? TC.hype.buyerMult() : 1) * (TC.seasons ? TC.seasons.buyerMult() : 1) * (TC.debuffs ? TC.debuffs.buyerMult() : 1) * (TC.news && TC.news.buyerMult ? TC.news.buyerMult() : 1);
       for (const g of cfg.generators) {
         const n = s.owned[g.id] || 0;
         let o = orderBook[g.id];

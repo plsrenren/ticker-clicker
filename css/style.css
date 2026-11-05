@@ -793,3 +793,8 @@ body {
   .dip-btn { bottom: calc(var(--plot-b) + 38px); }
   .news, .sound-btn { top: calc(var(--plot-t) - 10px); }
 }
+
+/* Rival ticker in the news right now */
+.rv.rv-hot { color: var(--text); text-shadow: 0 0 10px currentColor; }
+.rv.rv-hot[data-dir="up"] { color: var(--up); }
+.rv.rv-hot[data-dir="down"] { color: var(--down); }

@@ -19,6 +19,22 @@ TC.news = (() => {
 
   let active = null;
   let nextAt = null;
+  let boostUntil = -1; // rival scandal: buyers 2x
+  const rival = (avoid) => TC.rivals.pick(avoid);
+  // Rival headlines are picked separately from the classic ones (see trigger), weighted by season.
+  const CLASSIC = ["headline", "flash", "short", "earnings", "pump"];
+  const RIVAL_W = {
+    bull: { takeover: 3, rivalScandal: 2, partner: 2, copycat: 1, hostile: 1, sector: 0.3, poach: 1 },
+    bear: { takeover: 1, rivalScandal: 1, partner: 0.5, copycat: 2, hostile: 2, sector: 3, poach: 2 },
+    side: { takeover: 1, rivalScandal: 1, partner: 1, copycat: 1, hostile: 1, sector: 1, poach: 1 },
+  };
+  function pickRival() {
+    const w = RIVAL_W[(TC.seasons && TC.seasons.current()) || "side"] || RIVAL_W.side;
+    const names = Object.keys(w);
+    let r = Math.random() * names.reduce((s, n) => s + w[n], 0);
+    for (const n of names) { r -= w[n]; if (r <= 0) return n; }
+    return names[0];
+  }
 
   // ---------- Banner UI ----------
   const banner = {
@@ -223,6 +239,207 @@ TC.news = (() => {
         },
       };
     },
+
+    // ---------- Rival headlines: the tape's tickers get involved ----------
+    // Takeover rumor (good): a rival "wants to buy you". Big pump, then the deal falls through.
+    // Sell near the top to keep the gains (it counts as an event peak).
+    takeover() {
+      const R = rival(), gain = rand(0.25, 0.4), keep = 0.3;
+      let t = 0, phase = 0, start = 0, peak = 0;
+      return {
+        start() {
+          start = st().basePrice;
+          banner.show({ tag: "TAKEOVER RUMOR", tone: "up", text: "$" + R + " in talks to buy " + sym(), sub: "Sell before the deal falls through" });
+          TC.events.emit("news", { type: "takeover", tone: "up", big: true });
+          TC.rivals.move(R, rand(0.05, 0.1), 8);
+        },
+        update(dt) {
+          t += dt;
+          if (phase === 0) {
+            const target = start * (1 + gain * Math.min(1, t / 3));
+            if (target > st().basePrice) TC.market.shift(target / st().basePrice - 1, "takeover");
+            if (t >= 5) { phase = 1; peak = st().basePrice; banner.show({ tag: "DEAL OFF", tone: "down", text: "$" + R + " walks away from " + sym(), sub: "" }); TC.rivals.move(R, -rand(0.08, 0.15), 4); }
+          } else {
+            const p = Math.min(1, (t - 5) / 2);
+            const target = peak - (peak - start) * (1 - keep) * p;
+            if (target < st().basePrice) TC.market.shift(target / st().basePrice - 1, "takeover");
+            if (p >= 1) return t < 8.5;
+          }
+          return true;
+        },
+      };
+    },
+
+    // Rival scandal (good): a rival blows up and investors flee to you: buyers 2x for 10s.
+    rivalScandal() {
+      const R = rival();
+      const WHAT = ["CEO arrested", "books found in a group chat", "\"AI\" was three interns", "auditor is the CEO's cousin"];
+      let t = 0;
+      return {
+        start() {
+          banner.show({ tag: "SCANDAL AT $" + R, tone: "up", text: "$" + R + " " + pick(WHAT) + ". Investors flee to " + sym(), sub: "Buyers 2x for 10s" });
+          TC.events.emit("news", { type: "rivalScandal", tone: "up" });
+          TC.rivals.move(R, -rand(0.3, 0.5), 10);
+          boostUntil = st().clock + 10;
+          TC.market.shift(rand(0.05, 0.1), "rivalScandal");
+        },
+        update(dt) { t += dt; return t < 4; },
+      };
+    },
+
+    // Partnership (good): slow rally, and the rival moves with you for a minute.
+    partner() {
+      const R = rival(), gain = rand(0.15, 0.25);
+      const WHAT = ["picks " + "%s" + " as its supplier", "signs a 10-year deal with %s", "will put %s in every product"];
+      let t = 0, start = 0;
+      return {
+        start() {
+          start = st().basePrice;
+          banner.show({ tag: "PARTNERSHIP", tone: "up", text: "$" + R + " " + pick(WHAT).replace("%s", sym()), sub: "$" + R + " now moves with you" });
+          TC.events.emit("news", { type: "partner", tone: "up" });
+          TC.rivals.link(R, 60);
+        },
+        update(dt) {
+          t += dt;
+          const target = start * (1 + gain * Math.min(1, t / 6));
+          if (target > st().basePrice) TC.market.shift(target / st().basePrice - 1, "partner");
+          return t < 7;
+        },
+      };
+    },
+
+    // Index inclusion (good, once per run at a $100B market cap): buyers +25% for the rest of the run.
+    index() {
+      const R = rival();
+      let t = 0;
+      return {
+        start() {
+          st().indexed = true;
+          banner.show({ tag: "INDEX INCLUSION", tone: "up", text: sym() + " replaces $" + R + " in the index", sub: "Buyers +25% for the rest of this run" });
+          TC.events.emit("news", { type: "index", tone: "up", big: true });
+          TC.rivals.move(R, -rand(0.15, 0.25), 10);
+          TC.market.shift(rand(0.08, 0.12), "index");
+        },
+        update(dt) { t += dt; return t < 4.5; },
+      };
+    },
+
+    // Copycat (bad): a rival launches a knockoff. Tap 15 times in 5s, or retail traders defect.
+    copycat() {
+      const R = rival(), T = 5, need = 15;
+      let t = 0, taps = 0, resolved = false;
+      return {
+        start() {
+          banner.show({ tag: "COPYCAT", tone: "down", text: "$" + R + " launches a cheaper " + sym(), sub: "Tap " + need + " times to keep your retail traders", meter: { a: 0, b: 0 } });
+          TC.events.emit("news", { type: "copycat", tone: "down" });
+          TC.rivals.move(R, rand(0.08, 0.15), 8);
+        },
+        onTap() { if (!resolved) taps++; },
+        update(dt) {
+          t += dt;
+          if (!resolved) {
+            banner.meter(t / T * 0.5, taps / need * 0.5);
+            banner.sub(Math.max(0, need - taps) + " taps left · " + Math.max(0, T - t).toFixed(1) + "s");
+            if (taps >= need) {
+              resolved = true;
+              banner.show({ tag: "KNOCKOFF FLOPS", tone: "up", text: "Nobody wants $" + R + "'s version", sub: "" });
+              TC.rivals.move(R, -rand(0.15, 0.25), 4);
+              TC.market.shift(rand(0.04, 0.07), "copycat");
+              t = T;
+            } else if (t >= T) {
+              resolved = true;
+              banner.show({ tag: "RETAIL DEFECTS", tone: "down", text: "Retail traders switch to $" + R, sub: "Retail traders −30% for 20s" });
+              TC.debuffs.add("copycat");
+              TC.market.shift(-rand(0.06, 0.1), "copycat");
+            }
+            return true;
+          }
+          return t < T + 2;
+        },
+      };
+    },
+
+    // Hostile takeover (bad): a lowball bid drags your price down. Out-tap it, or you're forced
+    // to sell part of your stake at the bid price.
+    hostile() {
+      const R = rival(), T = 6, need = 25;
+      let t = 0, taps = 0, resolved = false, start = 0, bid = 0;
+      return {
+        start() {
+          start = st().basePrice;
+          bid = start * rand(0.65, 0.75);
+          banner.show({ tag: "HOSTILE BID", tone: "down", text: "$" + R + " bids " + TC.format.money(bid) + " a share for " + sym(), sub: "Tap " + need + " times to reject it", meter: { a: 0, b: 0 } });
+          TC.events.emit("news", { type: "hostile", tone: "down", big: true });
+        },
+        onTap() { if (!resolved) taps++; },
+        update(dt) {
+          t += dt;
+          if (!resolved) {
+            // Price sinks toward the bid while the fight is on
+            const target = start + (bid - start) * Math.min(1, t / T) * (1 - Math.min(1, taps / need));
+            if (target < st().basePrice) TC.market.shift(target / st().basePrice - 1, "hostile");
+            banner.meter(t / T * 0.5, taps / need * 0.5);
+            banner.sub(Math.max(0, need - taps) + " taps left · " + Math.max(0, T - t).toFixed(1) + "s");
+            if (taps >= need) {
+              resolved = true;
+              banner.show({ tag: "BID REJECTED", tone: "up", text: "The board tells $" + R + " no", sub: "" });
+              TC.rivals.move(R, -rand(0.08, 0.14), 4);
+              TC.market.shift(rand(0.1, 0.15), "hostile");
+              t = T;
+            } else if (t >= T) {
+              resolved = true;
+              const s = st();
+              const n = Math.min(cfg.stake.hostileShares, s.shares * 0.2);
+              s.shares -= n;
+              s.cash += n * bid;
+              banner.show({ tag: "SQUEEZED OUT", tone: "down", text: "$" + R + " takes " + +(n / cfg.sharesOutstanding * 100).toFixed(2) + "% of " + sym() + " at the bid", sub: "You got " + TC.format.money(n * bid) + " for it" });
+              TC.events.emit("news", { type: "squeezedOut", tone: "down", big: true });
+              TC.rivals.move(R, rand(0.06, 0.12), 4);
+            }
+            return true;
+          }
+          return t < T + 2.2;
+        },
+      };
+    },
+
+    // Sector crash (bad): the whole tape goes red and drags you with it. Common in bear markets.
+    sector() {
+      const A = rival(), B = rival([A]), drop = rand(0.15, 0.25);
+      let t = 0, start = 0;
+      return {
+        start() {
+          start = st().basePrice;
+          const a = rand(0.3, 0.45), b = rand(0.25, 0.4);
+          banner.show({ tag: "SECTOR CRASH", tone: "down", text: "Meme stocks crash: $" + A + " " + pct(-a) + ", $" + B + " " + pct(-b) + ". " + sym() + " next?", sub: "" });
+          TC.events.emit("news", { type: "sector", tone: "down", big: true });
+          for (const n of TC.rivals.names()) TC.rivals.move(n, -(n === A ? a : n === B ? b : rand(0.05, 0.2)), n === A || n === B ? 8 : 3);
+        },
+        update(dt) {
+          t += dt;
+          const target = start * (1 - drop * Math.min(1, t / 3));
+          if (target < st().basePrice) TC.market.shift(target / st().basePrice - 1, "sector");
+          return t < 5;
+        },
+      };
+    },
+
+    // Poached exec (bad): your upgrades stop working for 15s.
+    poach() {
+      const R = rival();
+      const WHO = ["CFO", "CTO", "head of growth", "only engineer"];
+      let t = 0;
+      return {
+        start() {
+          banner.show({ tag: "EXEC POACHED", tone: "down", text: "Your " + pick(WHO) + " just joined $" + R, sub: "Upgrades off for 15s" });
+          TC.events.emit("news", { type: "poach", tone: "down" });
+          TC.debuffs.add("poach");
+          TC.rivals.move(R, rand(0.06, 0.12), 6);
+          TC.market.shift(-rand(0.04, 0.07), "poach");
+        },
+        update(dt) { t += dt; return t < 4; },
+      };
+    },
   };
 
   function schedule() {
@@ -232,15 +449,18 @@ TC.news = (() => {
   const api = {
     types,
     active: () => active,
+    // Buyer multiplier from news: rival scandal (2x for 10s) and index inclusion (+25% for the run)
+    buyerMult: () => (st().clock < boostUntil ? 2 : 1) * (st().indexed ? 1.25 : 1),
 
     init() {
       TC.events.on("buy", (e) => { if (!e.stack && active && active.onTap) active.onTap(); });
-      TC.events.on("reset", () => { active = null; nextAt = null; banner.hide(); });
+      TC.events.on("reset", () => { active = null; nextAt = null; boostUntil = -1; banner.hide(); });
     },
 
     trigger(name, opts) {
       if (active) return false;
-      name = name || (TC.seasons ? TC.seasons.pickNews(Object.keys(types)) : pick(Object.keys(types)));
+      // 40% of random events involve a rival ticker
+      if (!name) name = Math.random() < 0.4 ? pickRival() : (TC.seasons ? TC.seasons.pickNews(CLASSIC) : pick(CLASSIC));
       const make = types[name];
       active = make(opts);
       active.type = name;
@@ -262,6 +482,8 @@ TC.news = (() => {
         return;
       }
       if (s.basePrice < cfg.news.minPrice) return;
+      // Index inclusion fires once per run at a $100B market cap
+      if (!s.indexed && TC.market.marketCap(s.bestPrice) >= 1e11) { api.trigger("index"); return; }
       if (nextAt === null) nextAt = s.clock + cfg.news.firstAfter;
       if (s.clock >= nextAt) api.trigger();
     },

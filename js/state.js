@@ -31,6 +31,7 @@ TC.state = (() => {
       lastSellAt: -1e9,  // game clock of your last sell (SEC fine window)
       debuffs: {},       // debuff id -> game clock time it ends
       dividendsOn: true, // dividend payouts switched on (dividends.js)
+      indexed: false,    // index inclusion happened this run (news.js)
       buybackHeat: 0,    // buyback premium (market.buybackCost)
       buybackAt: 0,      // current market season { id, left, next, warned }, so reloads don't reset it
 

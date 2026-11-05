@@ -15,6 +15,8 @@ TC.debuffs = (() => {
     retail: { name: "Retail spooked", short: "RETAIL", dur: 20, gen: { retail: 0.8 } },
     remorse: { name: "Buyer's remorse", short: "TAPS", dur: 15, tap: 0.5 },
     halt:    { name: "Trading halt", short: "HALTED", dur: 5, tap: 0 },
+    copycat: { name: "Retail defects", short: "RETAIL", dur: 20, gen: { retail: 0.7 } },
+    poach:   { name: "Exec poached", short: "UPGRADES OFF", dur: 15, label: true },
   };
   let lastKey = "";
 
@@ -27,7 +29,7 @@ TC.debuffs = (() => {
     const ids = activeIds();
     const parts = ids.map((id) => {
       const t = TYPES[id];
-      const m = t.buyer != null ? t.buyer : t.tap != null ? t.tap : Object.values(t.gen)[0];
+      const m = t.label ? 0 : t.buyer != null ? t.buyer : t.tap != null ? t.tap : Object.values(t.gen)[0];
       const pct = m > 0 ? " −" + Math.round((1 - m) * 100) + "%" : "";
       return { id, text: t.short + pct + " " + Math.ceil(list()[id] - st().clock) + "s", title: t.name };
     });

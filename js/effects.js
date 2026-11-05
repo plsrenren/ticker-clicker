@@ -555,7 +555,7 @@ TC.effects = (() => {
       api.spawn("floatText", { x: w / 2 - 30, y: h * 0.58, text: "SOLD INTO THE CRASH", color: C.down, size: 22, life: 1.6 });
     });
     TC.events.on("debuff", ({ id, name }) => {
-      if (id === "remorse" || id === "halt") return; // overtrade already announced it
+      if (id === "remorse" || id === "halt" || id === "poach" || id === "copycat") return; // already announced elsewhere
       api.spawn("floatText", { x: w / 2 - 30, y: h * 0.62, text: name.toUpperCase(), color: C.down, size: 22, life: 1.8 });
       api.spawn("vignette", { color: C.down, life: 0.8, strength: 0.5 }, 2);
     });
