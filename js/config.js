@@ -18,8 +18,9 @@ TC.config = {
   startShares: 100,      // shares you hold (used by SELL)
   sell: {
     offPeak: 0.5,        // sells outside an event peak pay half
-    fineWindow: 60,      // selling again within this many seconds draws an SEC fine...
-    fine: 0.2,           // ...of this share of your cash
+    fineWindow: 30,      // selling again within this many seconds risks an SEC fine...
+    fineChance: 0.65,    // ...this often...
+    fine: 0.2,           // ...costing this share of your cash
     crashDrop: 0.3,      // selling into a crash drops the price this much instead of the usual drop
     payout: 0.002,       // a sell pays shares x price x this: 0.2x the price
     drop: 0.15,          // and knocks 15% off the price

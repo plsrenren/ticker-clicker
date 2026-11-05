@@ -81,7 +81,7 @@ TC.market = (() => {
     // Selling while an event has the price well below its high = selling into a crash
     sellingIntoCrash: () => !!(TC.trade && TC.trade.inCrash()),
     sellDrop: () => (api.sellingIntoCrash() ? cfg.sell.crashDrop : cfg.sell.drop),
-    // Selling again this soon draws an SEC fine
+    // Selling again this soon risks an SEC fine (cfg.sell.fineChance)
     fineRisk: () => st().clock - st().lastSellAt < cfg.sell.fineWindow,
     sellCooldown() { return Math.max(0, st().sellReadyAt - st().clock); },
     canSell() { return st().listed && st().basePrice >= cfg.sell.minPrice && api.sellCooldown() === 0; },
@@ -126,7 +126,7 @@ TC.market = (() => {
       const cash = api.sellValue();
       const before = api.quote();
       const crash = api.sellingIntoCrash();
-      const fined = api.fineRisk();
+      const fined = api.fineRisk() && Math.random() < cfg.sell.fineChance;
       s.cash += cash;
       s.basePrice *= 1 - api.sellDrop();
       s.lastSellAt = s.clock;
