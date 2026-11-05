@@ -15,6 +15,7 @@
 //   achievement         sparkle chime
 //   ipo / private       bell / big chord
 //   offline collect     coin chime
+//   bigMove             6%/15%/30% moves within a second: boom (down) or rising chord (up), bigger per tier
 //   season / seasonWarn rising (bull) or falling (bear) brass chord / two-beep warning
 window.TC = window.TC || {};
 
@@ -166,6 +167,16 @@ TC.sound = (() => {
         else chord([440, 440], { type: "triangle", dur: 0.4, vol: 0.2, spread: 0.2 });
       });
       E.on("backfire", () => { sfx.buzz(); tone({ freq: 300, to: 60, type: "sawtooth", dur: 0.6, vol: 0.2 }); });
+      // Big moves: deeper, louder hit for bigger tiers
+      E.on("bigMove", ({ dir, tier }) => {
+        if (dir === "down") {
+          tone({ freq: 120 - tier * 20, to: 35, type: "sine", dur: 0.4 + tier * 0.2, vol: 0.4 + tier * 0.15 });
+          noise({ dur: 0.3 + tier * 0.2, vol: 0.15 + tier * 0.08, from: 900, to: 100, type: "lowpass" });
+        } else {
+          chord([392, 523, 659, 784].slice(0, tier + 1), { type: "triangle", dur: 0.35 + tier * 0.1, vol: 0.18 + tier * 0.05, spread: 0.05 });
+          if (tier >= 2) noise({ dur: 0.5, vol: 0.2, from: 400, to: 6000, q: 2 });
+        }
+      });
       E.on("seasonWarn", () => { tone({ freq: 660, type: "sine", dur: 0.25, vol: 0.2 }); tone({ freq: 660, type: "sine", dur: 0.25, vol: 0.2, delay: 0.35 }); });
     },
   };

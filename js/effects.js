@@ -212,6 +212,21 @@ TC.effects = (() => {
     },
 
     // Colored glow around the edges of the chart, for news hits
+    // Whole chart flashes a color, then fades (big moves)
+    flash({ color = C.down, life = 0.5, strength = 0.3 }) {
+      let t = 0;
+      return {
+        update(dt) { t += dt; return t < life; },
+        draw(g) {
+          g.save();
+          g.globalAlpha = strength * Math.pow(1 - t / life, 2);
+          g.fillStyle = color;
+          g.fillRect(0, 0, w, h);
+          g.restore();
+        },
+      };
+    },
+
     vignette({ color = C.down, life = 0.9, strength = 0.7 }) {
       let t = 0;
       return {
@@ -341,6 +356,7 @@ TC.effects = (() => {
     },
     update(dt) {
       heat = Math.max(0, heat - dt * 0.7);
+      bigMove.update(dt);
       for (let i = live.length - 1; i >= 0; i--) if (!live[i].update(dt)) live.splice(i, 1);
       feed.update(dt);
       updateShake(dt);
@@ -353,6 +369,53 @@ TC.effects = (() => {
     clear() { live.length = 0; feed.clear(); },
   };
 
+  // ---------- Big moves ----------
+  // Watches the real price over the last second. When it moves more than 6% / 15% / 30% in one
+  // direction, fires a tier of effects once (a tier re-arms when the move fades below 3%).
+  const TIERS = [0.06, 0.15, 0.3];
+  const bigMove = {
+    samples: [], fired: { up: 0, down: 0 }, mutedUntil: 0, clock: 0,
+    update(dt) {
+      const s = TC.state.data;
+      if (!s.listed || s.basePrice <= 0) { this.samples.length = 0; return; }
+      this.clock += dt;
+      const now = s.basePrice;
+      this.samples.push({ t: this.clock, p: now });
+      while (this.samples.length && this.clock - this.samples[0].t > 1) this.samples.shift();
+      let lo = Infinity, hi = 0;
+      for (const x of this.samples) { if (x.p < lo) lo = x.p; if (x.p > hi) hi = x.p; }
+      const up = lo > 0 ? now / lo - 1 : 0;
+      const down = hi > 0 ? 1 - now / hi : 0;
+      for (const [dir, mv] of [["up", up], ["down", down]]) {
+        if (mv < 0.03) { this.fired[dir] = 0; continue; }
+        const tier = TIERS.filter((x) => mv >= x).length;
+        if (tier > this.fired[dir]) {
+          this.fired[dir] = tier;
+          if (this.clock >= this.mutedUntil) fireBig(dir, tier, mv);
+        }
+      }
+    },
+  };
+
+  function fireBig(dir, tier, mv) {
+    const tip = TC.chart.tip();
+    const color = dir === "up" ? C.up : C.down;
+    const hot = dir === "up" ? C.core : C.down;
+    TC.events.emit("bigMove", { dir, tier, pct: mv });
+    // Tier 1 (6%+): thick pulse, ring, small shake
+    api.spawn("pulse", { color: hot, speed: 220, width: 30 + tier * 12, life: 1.3, strength: 1.3 + tier * 0.3 });
+    api.spawn("ring", { x: tip.x, y: tip.y, color, max: 90 + tier * 60, life: 0.7 });
+    for (let i = 0; i < 6 * tier; i++) api.spawn("spark", { x: tip.x, y: tip.y, color: i % 2 ? color : hot }, 200);
+    shake(2 + tier * 3, 0.25 + tier * 0.1);
+    if (tier < 2) return;
+    // Tier 2 (15%+): whole chart flashes, double shockwave, big % call-out
+    api.spawn("flash", { color, life: 0.5 + tier * 0.1, strength: tier === 3 ? 0.42 : 0.28 }, 3);
+    api.spawn("ring", { x: tip.x, y: tip.y, color: hot, max: 220 + tier * 60, life: 0.9 });
+    setTimeout(() => api.spawn("ring", { x: TC.chart.tip().x, y: TC.chart.tip().y, color, max: 300, life: 1 }), 120);
+    api.spawn("vignette", { color, life: 1, strength: 0.9 }, 2);
+    api.spawn("floatText", { x: w / 2 - 30, y: h * 0.4, text: (dir === "up" ? "+" : "−") + Math.round(mv * 100) + "%", color, size: tier === 3 ? 56 : 42, life: 1.4 });
+  }
+
   // ---------- Wiring: which events trigger which effects ----------
   function wire() {
     TC.events.on("buy", ({ amount, x, y }) => {
@@ -364,8 +427,13 @@ TC.effects = (() => {
       feed.add(amount, +1);
       TC.chart.flash("up");
 
-      // At your finger
-      api.spawn("tapRipple", { x: fx, y: fy, k }, 24);
+      // At your finger. Bigger orders (vs the price) hit harder, on top of tap speed.
+      const size = Math.min(1, amount / Math.max(TC.state.data.basePrice, 0.01) / 0.04);
+      api.spawn("tapRipple", { x: fx, y: fy, k: Math.max(k, size) }, 24);
+      if (size > 0.5) {
+        const tp = TC.chart.tip();
+        api.spawn("ring", { x: tp.x, y: tp.y, color: C.core, max: 60 + size * 80, life: 0.5 });
+      }
       const n = 5 + Math.round(k * 9);
       for (let i = 0; i < n; i++) api.spawn("coin", { x: fx, y: fy, k }, 220);
 
@@ -388,6 +456,7 @@ TC.effects = (() => {
         return;
       }
       // You dumped shares: a heavy red wave, a jolt, and the cash you took
+      bigMove.mutedUntil = bigMove.clock + 0.6;
       const tip = TC.chart.tip();
       api.spawn("pulse", { color: C.down, speed: 200, width: 45, life: 1.6, strength: 1.8 });
       api.spawn("pulse", { color: C.down, speed: 120, width: 25, life: 2, strength: 1.2 });
@@ -405,9 +474,13 @@ TC.effects = (() => {
     // A buyer filled an order: its own line in the feed and a soft pulse, no finger effects
     TC.events.on("order", ({ amount }) => {
       feed.add(amount, +1, "buyer");
-      api.spawn("pulse", { color: C.line, speed: 130, width: 12, strength: 0.7 }, 8);
       const tip = TC.chart.tip();
-      for (let i = 0; i < 2; i++) api.spawn("spark", { x: tip.x, y: tip.y }, 120);
+      const frac = amount / Math.max(TC.state.data.basePrice, 0.01); // order size vs price
+      const k = Math.min(1, frac / 0.05);                           // 0 small .. 1 at 5% of price
+      api.spawn("pulse", { color: k > 0.6 ? C.core : C.line, speed: 130 + k * 80, width: 12 + k * 22, strength: 0.7 + k * 0.8 }, 8);
+      for (let i = 0; i < 2 + Math.round(k * 10); i++) api.spawn("spark", { x: tip.x, y: tip.y }, 160);
+      if (k > 0.4) api.spawn("ring", { x: tip.x, y: tip.y, color: C.line, max: 50 + k * 90, life: 0.6 });
+      if (k >= 1) shake(2, 0.15);
     });
 
     TC.events.on("hype", ({ title, tone }) => {
