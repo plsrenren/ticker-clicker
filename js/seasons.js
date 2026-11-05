@@ -74,6 +74,16 @@ TC.seasons = (() => {
     TC.events.emit("season", { id, name: cur().name });
   }
 
+  // The season lives in the save so a reload or an update keeps it
+  function persist() { st().season = id ? { id, left, next, warned } : null; }
+  function restore() {
+    const sv = st().season;
+    if (!sv || !SEASONS[sv.id]) return false;
+    id = sv.id; left = sv.left; next = SEASONS[sv.next] ? sv.next : pickNext(); warned = !!sv.warned;
+    document.documentElement.dataset.season = id;
+    return true;
+  }
+
   function render() {
     const el = $("season");
     if (!el) return;
@@ -137,8 +147,9 @@ TC.seasons = (() => {
     update(dt) {
       const s = st();
       if (!s.listed) return;
+      if (!id && restore()) { render(); return; }
       if (!id) {
-        if (s.basePrice >= MIN_PRICE) enter("bull");
+        if (s.basePrice >= MIN_PRICE) { enter("bull"); persist(); }
         render();
         return;
       }
@@ -148,6 +159,7 @@ TC.seasons = (() => {
         TC.events.emit("seasonWarn", { next, name: SEASONS[next].name });
       }
       if (left <= 0) enter(next);
+      persist();
       if (shock) {
         shock.t += dt;
         const p = Math.min(1, shock.t / shock.d);

@@ -26,6 +26,7 @@ TC.state = (() => {
       upgrades: {},      // upgrade id -> true
       dayOpen: 0,        // price at the start of this session, for the change readout
       bestPrice: 0,      // best price this run (drives reveals and founder points)
+      season: null,      // current market season { id, left, next, warned }, so reloads don't reset it
 
       // ---- meta ----
       prestige: { points: 0, count: 0 },
