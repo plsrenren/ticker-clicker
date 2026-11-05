@@ -16,6 +16,8 @@ TC.news = (() => {
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
   const sym = () => "$" + st().symbol;
   const pct = (f) => (f >= 0 ? "+" : "−") + Math.round(Math.abs(f) * 100) + "%";
+  // Flavor text (flavor.js): L("key", { r: "$SNEK", pct: "+20%" })
+  const L = (key, vars) => TC.flavor.line(key, Object.assign({ you: sym() }, vars));
 
   let active = null;
   let nextAt = null;
@@ -68,21 +70,13 @@ TC.news = (() => {
   const types = {
     // Bad headline: drops 20-40% over 4s; every tap shaves the remaining drop.
     headline() {
-      const HEADLINES = [
-        "CEO posts a meme at 3am",
-        "Auditor resigns, cites \"vibes\"",
-        "Factory turns out to be a green screen",
-        "CFO spotted buying a yacht named EXIT",
-        "Product recalled for being a jpeg",
-        "Regulators would like a word",
-      ];
       const T = 4, CH = 20;
       let t = 0, tick = 0, done = 0, applied = 0;
       let remaining = rand(0.2, 0.4);
       const full = remaining;
       return {
         start() {
-          banner.show({ tag: "BREAKING", tone: "down", text: sym() + ": " + pick(HEADLINES), sub: "Tap fast to defend the price", meter: { a: 0, b: 0 } });
+          banner.show({ tag: "BREAKING", tone: "down", text: L("headline"), sub: L("headlineSub"), meter: { a: 0, b: 0 } });
           TC.events.emit("news", { type: "headline", tone: "down" });
         },
         onTap() { remaining *= 0.965; },
@@ -118,7 +112,7 @@ TC.news = (() => {
       return {
         start() {
           startPrice = st().basePrice;
-          banner.show({ tag: "FLASH CRASH", tone: "down", text: sym() + " drops " + Math.round(drop * 100) + "% in seconds", sub: "Hold on…" });
+          banner.show({ tag: "FLASH CRASH", tone: "down", text: L("flash", { pct: pct(-drop) }), sub: L("flashSub") });
           TC.events.emit("news", { type: "flash", tone: "down", big: true });
           TC.market.shift(-drop * 0.6, "flash");
         },
@@ -131,7 +125,7 @@ TC.news = (() => {
           }
           if (phase === 1 && t > 2.5) {
             phase = 2;
-            banner.show({ tag: "RECOVERING", tone: "up", text: "Dip buyers step in", sub: "" });
+            banner.show({ tag: "RECOVERING", tone: "up", text: L("recover"), sub: "" });
           }
           if (phase === 2) {
             // Climb back `back` of the gap over 2s, in small steps
@@ -152,7 +146,7 @@ TC.news = (() => {
       let t = 0, taps = 0, resolved = false;
       return {
         start() {
-          banner.show({ tag: "SHORT ATTACK", tone: "down", text: "Short sellers are piling into " + sym(), sub: "Tap " + need + " times before the red bar fills", meter: { a: 0, b: 0 } });
+          banner.show({ tag: "SHORT ATTACK", tone: "down", text: L("short"), sub: "Tap " + need + " times before the red bar fills", meter: { a: 0, b: 0 } });
           TC.events.emit("news", { type: "short", tone: "down" });
         },
         onTap() { if (!resolved) taps++; },
@@ -164,14 +158,14 @@ TC.news = (() => {
             if (taps >= need) {
               resolved = true;
               const up = rand(0.12, 0.2);
-              banner.show({ tag: "SHORT SQUEEZE", tone: "up", text: "Shorts are covering. " + sym() + " " + pct(up), sub: "" });
+              banner.show({ tag: "SHORT SQUEEZE", tone: "up", text: L("squeeze", { pct: pct(up) }), sub: "" });
               TC.events.emit("news", { type: "squeeze", tone: "up", big: true });
               TC.market.shift(up, "short");
               t = T; // start the outro timer
             } else if (t >= T) {
               resolved = true;
               const down = rand(0.2, 0.3);
-              banner.show({ tag: "SHORTS WIN", tone: "down", text: sym() + " " + pct(-down), sub: "" });
+              banner.show({ tag: "SHORTS WIN", tone: "down", text: L("shortWin", { pct: pct(-down) }), sub: "" });
               TC.events.emit("news", { type: "shortwin", tone: "down", big: true });
               TC.market.shift(-down, "short");
             }
@@ -187,19 +181,19 @@ TC.news = (() => {
       const T = 5;
       const beat = Math.random() < (opts.beatOdds ?? (TC.seasons ? TC.seasons.beatOdds() : 0.55));
       const move = beat ? rand(0.15, 0.3) : -rand(0.1, 0.25);
-      let t = 0, done = false;
+      let t = 0, done = false, earnLine = "";
       return {
         start() {
-          banner.show({ tag: "EARNINGS", tone: "neutral", text: sym() + " reports in 5", sub: "Beat or miss?" });
+          banner.show({ tag: "EARNINGS", tone: "neutral", text: (earnLine = TC.flavor.pick("earningsIn")).replace("{you}", sym()).replace("{n}", 5), sub: L("earningsSub") });
           TC.events.emit("news", { type: "earnings", tone: "neutral" });
         },
         update(dt) {
           t += dt;
           if (!done) {
-            banner.text(sym() + " reports in " + Math.max(1, Math.ceil(T - t)));
+            banner.text(earnLine.replace("{you}", sym()).replace("{n}", Math.max(1, Math.ceil(T - t))));
             if (t >= T) {
               done = true;
-              banner.show({ tag: beat ? "BEAT" : "MISS", tone: beat ? "up" : "down", text: (beat ? "Crushed estimates. " : "Missed estimates. ") + sym() + " gaps " + pct(move), sub: "" });
+              banner.show({ tag: beat ? "BEAT" : "MISS", tone: beat ? "up" : "down", text: L(beat ? "beat" : "miss", { pct: pct(move) }), sub: "" });
               TC.events.emit("news", { type: beat ? "beat" : "miss", tone: beat ? "up" : "down", big: true });
               TC.market.shift(move, "earnings");
             }
@@ -212,14 +206,13 @@ TC.news = (() => {
 
     // Pump: rockets up, then gives back half.
     pump() {
-      const HANDLES = ["@moonboy_capital", "@stonkwizard", "@diamondhandz", "@yolo_daily", "@chartwhisperer"];
       const gain = rand(0.4, 0.8);
       const giveBack = 0.5;
       let t = 0, phase = 0, start = 0, peak = 0;
       return {
         start() {
           start = st().basePrice;
-          banner.show({ tag: "PUMP", tone: "up", text: pick(HANDLES) + ": \"" + sym() + " is going to the moon\"", sub: "" });
+          banner.show({ tag: "PUMP", tone: "up", text: L("pump", { who: TC.flavor.pick("handles") }), sub: "" });
           TC.events.emit("news", { type: "pump", tone: "up", big: true });
         },
         update(dt) {
@@ -228,7 +221,7 @@ TC.news = (() => {
             // ease up over 2.5s
             const target = start * (1 + gain * Math.min(1, t / 2.5));
             if (target > st().basePrice) TC.market.shift(target / st().basePrice - 1, "pump");
-            if (t >= 2.5) { phase = 1; peak = st().basePrice; banner.sub("Early buyers take profits…"); }
+            if (t >= 2.5) { phase = 1; peak = st().basePrice; banner.sub(L("pumpOut")); }
           } else if (phase === 1) {
             const p = Math.min(1, (t - 2.5) / 4);
             const target = peak - (peak - start) * giveBack * p;
@@ -249,7 +242,7 @@ TC.news = (() => {
       return {
         start() {
           start = st().basePrice;
-          banner.show({ tag: "TAKEOVER RUMOR", tone: "up", text: "$" + R + " in talks to buy " + sym(), sub: "Sell before the deal falls through" });
+          banner.show({ tag: "TAKEOVER RUMOR", tone: "up", text: L("takeover", { r: "$" + R }), sub: "Sell before the deal falls through" });
           TC.events.emit("news", { type: "takeover", tone: "up", big: true });
           TC.rivals.move(R, rand(0.05, 0.1), 8);
         },
@@ -258,7 +251,7 @@ TC.news = (() => {
           if (phase === 0) {
             const target = start * (1 + gain * Math.min(1, t / 3));
             if (target > st().basePrice) TC.market.shift(target / st().basePrice - 1, "takeover");
-            if (t >= 5) { phase = 1; peak = st().basePrice; banner.show({ tag: "DEAL OFF", tone: "down", text: "$" + R + " walks away from " + sym(), sub: "" }); TC.rivals.move(R, -rand(0.08, 0.15), 4); }
+            if (t >= 5) { phase = 1; peak = st().basePrice; banner.show({ tag: "DEAL OFF", tone: "down", text: L("takeoverOff", { r: "$" + R }), sub: "" }); TC.rivals.move(R, -rand(0.08, 0.15), 4); }
           } else {
             const p = Math.min(1, (t - 5) / 2);
             const target = peak - (peak - start) * (1 - keep) * p;
@@ -273,11 +266,10 @@ TC.news = (() => {
     // Rival scandal (good): a rival blows up and investors flee to you: buyers 2x for 10s.
     rivalScandal() {
       const R = rival();
-      const WHAT = ["CEO arrested", "books found in a group chat", "\"AI\" was three interns", "auditor is the CEO's cousin"];
       let t = 0;
       return {
         start() {
-          banner.show({ tag: "SCANDAL AT $" + R, tone: "up", text: "$" + R + " " + pick(WHAT) + ". Investors flee to " + sym(), sub: "Buyers 2x for 10s" });
+          banner.show({ tag: "SCANDAL AT $" + R, tone: "up", text: L("rivalScandal", { r: "$" + R }), sub: "Buyers 2x for 10s" });
           TC.events.emit("news", { type: "rivalScandal", tone: "up" });
           TC.rivals.move(R, -rand(0.3, 0.5), 10);
           boostUntil = st().clock + 10;
@@ -290,12 +282,11 @@ TC.news = (() => {
     // Partnership (good): slow rally, and the rival moves with you for a minute.
     partner() {
       const R = rival(), gain = rand(0.15, 0.25);
-      const WHAT = ["picks " + "%s" + " as its supplier", "signs a 10-year deal with %s", "will put %s in every product"];
       let t = 0, start = 0;
       return {
         start() {
           start = st().basePrice;
-          banner.show({ tag: "PARTNERSHIP", tone: "up", text: "$" + R + " " + pick(WHAT).replace("%s", sym()), sub: "$" + R + " now moves with you" });
+          banner.show({ tag: "PARTNERSHIP", tone: "up", text: L("partner", { r: "$" + R }), sub: "$" + R + " now moves with you" });
           TC.events.emit("news", { type: "partner", tone: "up" });
           TC.rivals.link(R, 60);
         },
@@ -315,7 +306,7 @@ TC.news = (() => {
       return {
         start() {
           st().indexed = true;
-          banner.show({ tag: "INDEX INCLUSION", tone: "up", text: sym() + " replaces $" + R + " in the index", sub: "Buyers +25% for the rest of this run" });
+          banner.show({ tag: "INDEX INCLUSION", tone: "up", text: L("index", { r: "$" + R }), sub: "Buyers +25% for the rest of this run" });
           TC.events.emit("news", { type: "index", tone: "up", big: true });
           TC.rivals.move(R, -rand(0.15, 0.25), 10);
           TC.market.shift(rand(0.08, 0.12), "index");
@@ -330,7 +321,7 @@ TC.news = (() => {
       let t = 0, taps = 0, resolved = false;
       return {
         start() {
-          banner.show({ tag: "COPYCAT", tone: "down", text: "$" + R + " launches a cheaper " + sym(), sub: "Tap " + need + " times to keep your retail traders", meter: { a: 0, b: 0 } });
+          banner.show({ tag: "COPYCAT", tone: "down", text: L("copycat", { r: "$" + R }), sub: "Tap " + need + " times to keep your retail traders", meter: { a: 0, b: 0 } });
           TC.events.emit("news", { type: "copycat", tone: "down" });
           TC.rivals.move(R, rand(0.08, 0.15), 8);
         },
@@ -342,13 +333,13 @@ TC.news = (() => {
             banner.sub(Math.max(0, need - taps) + " taps left · " + Math.max(0, T - t).toFixed(1) + "s");
             if (taps >= need) {
               resolved = true;
-              banner.show({ tag: "KNOCKOFF FLOPS", tone: "up", text: "Nobody wants $" + R + "'s version", sub: "" });
+              banner.show({ tag: "KNOCKOFF FLOPS", tone: "up", text: L("copycatWin", { r: "$" + R }), sub: "" });
               TC.rivals.move(R, -rand(0.15, 0.25), 4);
               TC.market.shift(rand(0.04, 0.07), "copycat");
               t = T;
             } else if (t >= T) {
               resolved = true;
-              banner.show({ tag: "RETAIL DEFECTS", tone: "down", text: "Retail traders switch to $" + R, sub: "Retail traders −30% for 20s" });
+              banner.show({ tag: "RETAIL DEFECTS", tone: "down", text: L("copycatLose", { r: "$" + R }), sub: "Retail traders −30% for 20s" });
               TC.debuffs.add("copycat");
               TC.market.shift(-rand(0.06, 0.1), "copycat");
             }
@@ -368,7 +359,7 @@ TC.news = (() => {
         start() {
           start = st().basePrice;
           bid = start * rand(0.65, 0.75);
-          banner.show({ tag: "HOSTILE BID", tone: "down", text: "$" + R + " bids " + TC.format.money(bid) + " a share for " + sym(), sub: "Tap " + need + " times to reject it", meter: { a: 0, b: 0 } });
+          banner.show({ tag: "HOSTILE BID", tone: "down", text: L("hostile", { r: "$" + R, bid: TC.format.money(bid) }), sub: "Tap " + need + " times to reject it", meter: { a: 0, b: 0 } });
           TC.events.emit("news", { type: "hostile", tone: "down", big: true });
         },
         onTap() { if (!resolved) taps++; },
@@ -382,7 +373,7 @@ TC.news = (() => {
             banner.sub(Math.max(0, need - taps) + " taps left · " + Math.max(0, T - t).toFixed(1) + "s");
             if (taps >= need) {
               resolved = true;
-              banner.show({ tag: "BID REJECTED", tone: "up", text: "The board tells $" + R + " no", sub: "" });
+              banner.show({ tag: "BID REJECTED", tone: "up", text: L("hostileWin", { r: "$" + R }), sub: "" });
               TC.rivals.move(R, -rand(0.08, 0.14), 4);
               TC.market.shift(rand(0.1, 0.15), "hostile");
               t = T;
@@ -411,7 +402,7 @@ TC.news = (() => {
         start() {
           start = st().basePrice;
           const a = rand(0.3, 0.45), b = rand(0.25, 0.4);
-          banner.show({ tag: "SECTOR CRASH", tone: "down", text: "Meme stocks crash: $" + A + " " + pct(-a) + ", $" + B + " " + pct(-b) + ". " + sym() + " next?", sub: "" });
+          banner.show({ tag: "SECTOR CRASH", tone: "down", text: L("sector", { a: "$" + A, b: "$" + B, pa: pct(-a), pb: pct(-b) }), sub: "" });
           TC.events.emit("news", { type: "sector", tone: "down", big: true });
           for (const n of TC.rivals.names()) TC.rivals.move(n, -(n === A ? a : n === B ? b : rand(0.05, 0.2)), n === A || n === B ? 8 : 3);
         },
@@ -427,11 +418,10 @@ TC.news = (() => {
     // Poached exec (bad): your upgrades stop working for 15s.
     poach() {
       const R = rival();
-      const WHO = ["CFO", "CTO", "head of growth", "only engineer"];
       let t = 0;
       return {
         start() {
-          banner.show({ tag: "EXEC POACHED", tone: "down", text: "Your " + pick(WHO) + " just joined $" + R, sub: "Upgrades off for 15s" });
+          banner.show({ tag: "EXEC POACHED", tone: "down", text: L("poach", { r: "$" + R, who: TC.flavor.pick("execs") }), sub: "Upgrades off for 15s" });
           TC.events.emit("news", { type: "poach", tone: "down" });
           TC.debuffs.add("poach");
           TC.rivals.move(R, rand(0.06, 0.12), 6);
