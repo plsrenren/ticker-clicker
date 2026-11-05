@@ -777,3 +777,19 @@ body {
 .debuffs { flex-wrap: nowrap; flex-direction: row-reverse; }
 .cap-label { padding-top: 0; flex: none; }
 .chips .season-chip { order: -2; } .chips .debuffs { order: -1; }
+
+/* ---------- Phones: the chart is the whole-screen background ----------
+   The canvas fills the screen behind the header and dock; main.js (fitChart) insets the plot
+   so the price line only moves in the gap between them, and sets --plot-t / --plot-b. */
+@media (max-width: 899px) {
+  .chart-wrap { position: fixed; inset: 0; z-index: 0; --plot-t: 18px; --plot-b: 26px; }
+  .rivals, .tape, .dock { position: relative; z-index: 2; }
+  .dock { grid-row: 4; align-self: end; background: linear-gradient(to top, var(--ink) 62%, transparent); padding-top: 28px; }
+  .tape { background: linear-gradient(to bottom, var(--ink) 55%, transparent); }
+  .rivals { background: var(--ink); margin-bottom: 0; padding-bottom: 0; }
+  .tape { padding-top: 10px; }
+  .chart-hint { top: calc(var(--plot-t) + (100% - var(--plot-t) - var(--plot-b)) * 0.4); }
+  .mode-toggle { bottom: calc(var(--plot-b) + 8px); }
+  .dip-btn { bottom: calc(var(--plot-b) + 38px); }
+  .news, .sound-btn { top: calc(var(--plot-t) - 10px); }
+}

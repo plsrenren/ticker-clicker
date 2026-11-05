@@ -165,6 +165,8 @@ TC.chart = (() => {
 
     points: () => pts,
     tip: () => pts[pts.length - 1] || { x: w - pad.r, y: h - pad.b },
+    // Inset the plot (e.g. when the chart sits behind the header and dock)
+    setPad(p) { Object.assign(pad, p); },
     bounds: () => ({ l: pad.l, r: w - pad.r, t: pad.t, b: h - pad.b, w, h }),
     flash(kind) { tagFlash = { kind, t: 0.35 }; },
 

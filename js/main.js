@@ -34,9 +34,27 @@ window.TC = window.TC || {};
 
     bindInput();
     TC.ui.refresh(true);
+    fitChart();
+    window.addEventListener("resize", fitChart);
+    if (window.ResizeObserver) { const ro = new ResizeObserver(fitChart); ro.observe(document.querySelector(".tape")); ro.observe(document.querySelector(".dock")); }
     requestAnimationFrame(loop);
 
     window.claude?.hot?.snapshot?.(() => ({ state: TC.state.data, history: TC.chart.snapshot() }));
+  }
+
+  // Phones: the chart canvas fills the screen (see CSS). Keep the plot in the gap between header and dock.
+  function fitChart() {
+    const wrap = $("chartWrap");
+    if (window.innerWidth >= 900) {
+      TC.chart.setPad({ t: 18, b: 26 });
+      wrap.style.removeProperty("--plot-t"); wrap.style.removeProperty("--plot-b");
+      return;
+    }
+    const t = Math.round(document.querySelector(".tape").getBoundingClientRect().bottom + 6);
+    const b = Math.round(window.innerHeight - document.querySelector(".dock").getBoundingClientRect().top + 26);
+    TC.chart.setPad({ t, b });
+    wrap.style.setProperty("--plot-t", t + "px");
+    wrap.style.setProperty("--plot-b", b + "px");
   }
 
   // Start over. wipe = true deletes everything; false keeps founder points and achievements.
