@@ -39,7 +39,8 @@ TC.news = (() => {
   let splitBoostUntil = -1; // stock split: buyers 1.5x
   const rival = (avoid) => TC.rivals.pick(avoid);
   // Rival headlines are picked separately from the classic ones (see trigger), weighted by season.
-  const CLASSIC = ["headline", "flash", "short", "earnings", "pump", "opex"];
+  const CLASSIC = ["headline", "flash", "short", "earnings", "pump", "opex", "cyber"];
+  const taps = (n) => Math.round(n * (TC.market.has("intel") ? 0.8 : 1));
   const RIVAL_W = {
     bull: { takeover: 3, rivalScandal: 2, partner: 2, copycat: 1, hostile: 1, sector: 0.3, poach: 1 },
     bear: { takeover: 1, rivalScandal: 1, partner: 0.5, copycat: 2, hostile: 2, sector: 3, poach: 2 },
@@ -262,6 +263,116 @@ TC.news = (() => {
             return true;
           }
           return t < T + 2.2;
+        },
+      };
+    },
+
+    // ---- Security events: one of hack, breach or exploit ----
+    cyber(opts) { return types[pick(["hack", "breach", "exploit"])](opts); },
+
+    // Hack (bad): attackers drain the price for 6s until you patch the hole. Patch in time and
+    // the drain stops and a quarter of the loss comes back.
+    hack() {
+      const T = 6, need = taps(cfg.news.hackTaps);
+      const total = mag(0.25, 0.4);
+      const rate = Math.pow(1 - total, 1 / T); // per-second multiplier: the full drain takes T seconds
+      let t = 0, n = 0, lost = 0, resolved = false, acc = 0;
+      return {
+        start() {
+          banner.show({ tag: "HACKED", tone: "down", text: L("hack"), sub: "Tap " + need + " times to patch it", meter: { a: 0, b: 0 } });
+          TC.events.emit("news", { type: "hack", tone: "down" });
+        },
+        onTap() { if (!resolved) n++; },
+        update(dt) {
+          t += dt;
+          if (resolved) return t < 2.2;
+          if ((acc += dt) >= 0.1) {
+            const f = Math.pow(rate, acc) - 1;
+            lost = 1 - (1 - lost) * (1 + f);
+            TC.market.shift(f, "hack");
+            acc = 0;
+          }
+          this.saved = 1 - lost / total;
+          banner.meter(lost / total, n / need);
+          banner.sub(Math.max(0, need - n) + " taps to patch · " + Math.max(0, T - t).toFixed(1) + "s");
+          if (n >= need) {
+            resolved = true; t = 0;
+            const back = lost / (1 - lost) * 0.25;
+            banner.show({ tag: "PATCHED", tone: "up", text: L("hackPatched", { pct: pct(-lost) }), sub: "Systems restored: a quarter of the loss comes back" });
+            TC.events.emit("news", { type: "hackPatched", tone: "up" });
+            TC.market.shift(back, "hack");
+          } else if (t >= T) {
+            resolved = true; t = 0;
+            banner.show({ tag: "DRAINED", tone: "down", text: L("hacked", { pct: pct(-lost) }), sub: "" });
+            TC.events.emit("news", { type: "hacked", tone: "down", big: true });
+          }
+          return true;
+        },
+      };
+    },
+
+    // Data breach (bad): the drop lands first. Then 6s of taps win back up to 70% of it.
+    breach() {
+      const T = 6, need = taps(cfg.news.breachTaps);
+      const drop = mag(0.2, 0.35);
+      const R = drop / (1 - drop) * 0.7; // rise from the bottom that wins back 70% of the drop
+      let t = 0, n = 0, applied = 0, phase = 0;
+      return {
+        start() {
+          banner.show({ tag: "DATA BREACH", tone: "down", text: L("breach", { pct: pct(-drop) }), sub: "Tap to win back trust", meter: { a: 1, b: 0 } });
+          TC.events.emit("news", { type: "breach", tone: "down", big: true });
+          TC.market.shift(-drop, "breach");
+        },
+        onTap() { if (phase === 0) n++; },
+        update(dt) {
+          t += dt;
+          if (phase === 1) return t < 2.2;
+          const p = Math.min(1, n / need);
+          if (p > applied) { TC.market.shift((1 + R * p) / (1 + R * applied) - 1, "breach"); applied = p; }
+          this.saved = p * 0.7;
+          banner.meter(1 - t / T, p);
+          banner.sub(Math.round(p * 70) + "% of the drop won back · " + Math.max(0, T - t).toFixed(1) + "s");
+          if (p >= 1 || t >= T) {
+            phase = 1; t = 0;
+            const good = p >= 0.6;
+            banner.show({ tag: good ? "TRUST RESTORED" : "TRUST SHAKEN", tone: good ? "up" : "down", text: L(good ? "breachWin" : "breachLose"), sub: "You won back " + Math.round(p * 70) + "% of the drop" });
+            TC.events.emit("news", { type: good ? "breachWin" : "breachLose", tone: good ? "up" : "down" });
+          }
+          return true;
+        },
+      };
+    },
+
+    // Zero-day exploit (neutral): a researcher finds a hole. Ship the patch in 5s and you look great;
+    // miss it and the exploit goes public.
+    exploit() {
+      const T = 5, need = taps(cfg.news.exploitTaps);
+      let t = 0, n = 0, resolved = false;
+      return {
+        start() {
+          banner.show({ tag: "ZERO-DAY", tone: "neutral", text: L("exploit"), sub: "Tap " + need + " times to ship the patch", meter: { a: 0, b: 0 } });
+          TC.events.emit("news", { type: "exploit", tone: "neutral" });
+        },
+        onTap() { if (!resolved) n++; },
+        update(dt) {
+          t += dt;
+          if (resolved) return t < T + 2.2;
+          banner.meter(t / T * 0.5, n / need * 0.5);
+          banner.sub(Math.max(0, need - n) + " taps left · " + Math.max(0, T - t).toFixed(1) + "s");
+          if (n >= need) {
+            resolved = true; t = T;
+            const up = mag(0.06, 0.12);
+            banner.show({ tag: "PATCHED IN TIME", tone: "up", text: L("exploitWin", { pct: pct(up) }), sub: "" });
+            TC.events.emit("news", { type: "exploitWin", tone: "up" });
+            TC.market.shift(up, "exploit");
+          } else if (t >= T) {
+            resolved = true;
+            const down = mag(0.15, 0.25);
+            banner.show({ tag: "EXPLOIT PUBLIC", tone: "down", text: L("exploitLose", { pct: pct(-down) }), sub: "" });
+            TC.events.emit("news", { type: "exploitLose", tone: "down", big: true });
+            TC.market.shift(-down, "exploit");
+          }
+          return true;
         },
       };
     },

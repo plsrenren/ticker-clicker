@@ -130,6 +130,44 @@ TC.flavor = (() => {
     opexDown: ["Puts pay out. {you} drops off the pin. {pct}", "Pin breaks down: {you} {pct}", "Max pain wins. {you} {pct}"],
     gamma: ["Gamma squeeze! Dealers forced to buy {you}. {pct}", "Second leg: options dealers chase {you} {pct}", "Calls go in the money, dealers panic-buy {you}. {pct}"],
 
+    hack: [
+      "{you} hacked: attackers are dumping shares from stolen accounts",
+      "Hackers inside {you}'s trading systems",
+      "{you} treasury wallet compromised. Funds draining",
+      "Ransomware locks {you}'s servers, demands 400 BTC",
+      "{you}'s password was \"password\". Hackers noticed",
+    ],
+    hackSmall: [
+      "{you}'s website defaced by a bored teenager",
+      "Someone guessed {you}'s admin password: \"admin\"",
+      "{you}'s only server infected by a screensaver virus",
+    ],
+    hackBig: [
+      "State hackers breach {you}'s core network",
+      "{you} hit by the largest cyberattack in history",
+      "Hackers take {you}'s cloud offline across three continents",
+    ],
+    hackPatched: ["Hole patched. {you} stops the bleeding at {pct}", "Attackers locked out. {you} {pct} and recovering", "Security team wins: {you} patched at {pct}"],
+    hacked: ["Hackers walk away with it. {you} {pct}", "Too late: {you} drained {pct}", "The attack ran its course. {you} {pct}"],
+    breach: [
+      "{you} data breach: 40 million users exposed. {pct}",
+      "{you} customer data for sale on the dark web. {pct}",
+      "{you} left a database open to the internet. {pct}",
+      "Leaked: every {you} password, in plain text. {pct}",
+    ],
+    breachSmall: ["{you} emailed its customer list to everyone. All 212 of them. {pct}", "{you} intern posts the user database on a forum. {pct}"],
+    breachBig: ["{you} breach exposes a billion accounts. {pct}", "Regulators on three continents probe {you}'s breach. {pct}"],
+    breachWin: ["Free credit monitoring for everyone. Users forgive {you}", "{you} CEO's apology video goes viral, in a good way", "Fast response wins users back to {you}"],
+    breachLose: ["Users delete {you} in droves", "Class action filed against {you}", "\"We take security seriously\", says {you}. Nobody buys it"],
+    exploit: [
+      "Researcher finds a zero-day in {you}. Patch before it goes public",
+      "White-hat reports a critical exploit in {you}",
+      "Bug bounty hunter: \"{you} has a hole you could drive a truck through\"",
+      "Zero-day in {you} spotted on a hacker forum",
+    ],
+    exploitWin: ["{you} patches in record time. Security praised. {pct}", "Exploit closed before anyone used it. {you} {pct}", "{you} pays the bounty, wins the headlines. {pct}"],
+    exploitLose: ["Exploit goes public. {you} {pct}", "Hackers beat the patch. {you} {pct}", "Zero-day used in the wild. {you} {pct}"],
+
     // ---- rival events ----
     takeover: [
       "{r} in talks to buy {you}",
