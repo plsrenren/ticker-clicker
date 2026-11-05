@@ -117,6 +117,32 @@ TC.chart = (() => {
       hiArr = history.slice(); loArr = history.slice();
     },
 
+    // Fill the history with a made-up but believable path that ends exactly at `to`
+    // (used when you come back to the game, so the chart isn't a flat line).
+    // A random walk in log space with fat-tailed jumps, bent so it starts near `from` and lands on `to`.
+    walk(from, to) {
+      if (!(to > 0)) return api.fill(to || 0);
+      if (!(from > 0)) from = to;
+      const n = MAX, vol = 0.006, path = new Array(n);
+      let x = 0;
+      for (let i = 0; i < n; i++) {
+        let step = (Math.random() - 0.5) * 2 * vol;
+        if (Math.random() < 0.012) step += (Math.random() < 0.5 ? -1 : 1) * (0.02 + Math.random() * 0.05); // the odd spike or drop
+        x += step;
+        path[i] = x;
+      }
+      // Brownian bridge: remove the walk's own drift, then add the real move from `from` to `to`
+      const a = Math.log(from), b = Math.log(to), end = path[n - 1];
+      history = new Array(n); hiArr = new Array(n); loArr = new Array(n);
+      for (let i = 0; i < n; i++) {
+        const f = i / (n - 1);
+        const v = Math.exp(a + (b - a) * f + path[i] - end * f);
+        const w = v * vol * Math.random();
+        history[i] = v; hiArr[i] = v + w; loArr[i] = Math.max(0, v - w);
+      }
+      history[n - 1] = hiArr[n - 1] = loArr[n - 1] = to;
+    },
+
     snapshot() { return history.slice(); },
     restore(arr) {
       if (!Array.isArray(arr) || !arr.length) return;

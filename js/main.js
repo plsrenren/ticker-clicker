@@ -26,11 +26,18 @@ window.TC = window.TC || {};
     TC.achievements.init();
     TC.rivals.init();
     TC.events.on("private", () => newRun(false));
+    const before = TC.state.data.basePrice;
     if (!TC.state.data.listed) TC.ipo.show();
     else if (!hotData || !hotData.state) TC.offline.check();
 
+    // Coming back: draw a believable recent history instead of a flat line.
+    // If buyers pushed the price while you were away, the path climbs from where you left it.
     if (hotData && hotData.history) TC.chart.restore(hotData.history);
-    else if (TC.state.data.basePrice > 0) TC.chart.fill(TC.state.data.basePrice);
+    else if (TC.state.data.basePrice > 0) {
+      const now = TC.state.data.basePrice;
+      const from = before > 0 && before < now ? before : now * (0.9 + Math.random() * 0.15);
+      TC.chart.walk(from, now);
+    }
 
     bindInput();
     TC.ui.refresh(true);
