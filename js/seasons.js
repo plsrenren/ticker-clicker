@@ -4,7 +4,7 @@
 //   moves.js    moveBag()               silent swings lean up / down / choppy
 //   news.js     pickNews(), beatOdds(), gapMult()   which events fire, and how often
 //   trade.js    peakExtra(), dipLine(), stackMult() bull: +1x peak sells; bear: dips easier, stacks 1.5x
-// A bear market also slowly bleeds the price. Starts once the price reaches $20.
+// A bear market also slowly bleeds the price, and your own sells/buys can backfire (see BACKFIRE). Starts once the price reaches $20.
 window.TC = window.TC || {};
 
 TC.seasons = (() => {
@@ -42,6 +42,19 @@ TC.seasons = (() => {
   let next = null;
   let warned = false;
   let lastKey = "";
+
+  // Bear-market backfires: your own trades can spook the market.
+  //   SELL       35% chance of PANIC SELLING: another 10-20% drop over 1.5s
+  //   tap / buy  2% chance per tap of a BULL TRAP: price snaps back down 6-12% (at most once every 8s)
+  //   dip stack  25% chance the bounce is a BULL TRAP that gives back 8-14% right after
+  const BACKFIRE = { sell: 0.35, tap: 0.02, stack: 0.25, tapGap: 8 };
+  let shock = null;       // { f, d, t, applied } price move in progress
+  let trapReadyAt = 0;
+  function backfire(f, d, title) {
+    if (shock) return;
+    shock = { f, d, t: 0, applied: 0 };
+    TC.events.emit("backfire", { title });
+  }
 
   const cur = () => SEASONS[id] || SEASONS.side;
 
@@ -103,7 +116,22 @@ TC.seasons = (() => {
     set(newId) { if (SEASONS[newId]) enter(newId); },
 
     init() {
-      TC.events.on("reset", () => { id = null; delete document.documentElement.dataset.season; render(); });
+      TC.events.on("reset", () => { id = null; shock = null; delete document.documentElement.dataset.season; render(); });
+      TC.events.on("sell", (e) => {
+        if (id === "bear" && e.manual && Math.random() < BACKFIRE.sell) backfire(-rand(0.1, 0.2), 1.5, "PANIC SELLING");
+      });
+      TC.events.on("buy", (e) => {
+        if (id !== "bear" || e.stack || !e.manual) return;
+        const now = st().clock;
+        if (now >= trapReadyAt && Math.random() < BACKFIRE.tap) {
+          trapReadyAt = now + BACKFIRE.tapGap;
+          backfire(-rand(0.06, 0.12), 0.6, "BULL TRAP");
+        }
+      });
+      TC.events.on("stackBuy", () => {
+        // Let the stack land first, then maybe pull the rug
+        if (id === "bear" && Math.random() < BACKFIRE.stack) setTimeout(() => backfire(-rand(0.08, 0.14), 0.8, "BULL TRAP"), 1000);
+      });
     },
 
     update(dt) {
@@ -120,6 +148,13 @@ TC.seasons = (() => {
         TC.events.emit("seasonWarn", { next, name: SEASONS[next].name });
       }
       if (left <= 0) enter(next);
+      if (shock) {
+        shock.t += dt;
+        const p = Math.min(1, shock.t / shock.d);
+        const step = Math.pow(1 + shock.f, p) / Math.pow(1 + shock.f, shock.applied) - 1;
+        if (Math.abs(step) > 1e-5) { TC.market.shift(step, "backfire"); shock.applied = p; }
+        if (p >= 1) shock = null;
+      }
       // Bear markets slowly bleed (quietly: no trade feed spam)
       const bleed = cur().bleed;
       if (bleed && !(TC.news && TC.news.active())) s.basePrice *= 1 - bleed * dt;

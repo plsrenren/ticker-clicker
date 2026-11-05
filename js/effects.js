@@ -431,6 +431,15 @@ TC.effects = (() => {
       api.spawn("floatText", { x: w / 2 - 30, y: h * 0.45, text: name.toUpperCase() + " IN 15s", color, size: 20, life: 1.8 });
     });
 
+    TC.events.on("backfire", ({ title }) => {
+      const tip = TC.chart.tip();
+      api.spawn("floatText", { x: w / 2 - 30, y: h * 0.5, text: title, color: C.down, size: 30, life: 1.6 });
+      api.spawn("vignette", { color: C.down, life: 0.9, strength: 0.8 }, 2);
+      api.spawn("pulse", { color: C.down, speed: 220, width: 40, life: 1.4, strength: 1.6 });
+      api.spawn("ring", { x: tip.x, y: tip.y, color: C.down, max: 150, life: 0.7 });
+      shake(7, 0.4);
+    });
+
     TC.events.on("stackBuy", () => {
       api.spawn("floatText", { x: w / 2 - 30, y: h * 0.32, text: "BOUGHT THE DIP", color: C.up, size: 32, life: 1.5 });
       api.spawn("vignette", { color: C.up, life: 0.7, strength: 0.5 }, 2);
