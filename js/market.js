@@ -2,7 +2,7 @@
 //
 // The economy loop:
 //   taps + buyers  -> push the PRICE up
-//   NEW HIGHS      -> every $1 the price climbs above its record pays cashPerDollar -> CASH
+//   NEW HIGHS      -> every $1 the price climbs above its record sells a sliver of your stake -> CASH
 //                     (dips and recoveries pay nothing until the record is broken again)
 //   CASH           -> buys buyers and upgrades, which push the price up faster
 //   SELL           -> instant cash, but the price drops 15% below your record and there's a cooldown
@@ -58,8 +58,21 @@ TC.market = (() => {
     },
 
     // Cash paid per $1 the price climbs above its record.
+    // Cash paid per $1 the price climbs above its record: a slice of your stake.
     cashPerDollar() {
-      return cfg.cashPerDollar * upgradeProduct("yield");
+      return cfg.stake.cashOut * st().shares * upgradeProduct("yield");
+    },
+    stakePct: () => st().shares / cfg.sharesOutstanding,
+    stakeValue: (price) => st().shares * (price ?? api.quote()),
+    buybackCost: () => cfg.stake.buyback * st().basePrice * (1 + cfg.stake.fee),
+    canBuyback: () => st().listed && st().basePrice > 0 && st().shares + cfg.stake.buyback <= cfg.stake.max && st().cash >= api.buybackCost(),
+    buyback() {
+      if (!api.canBuyback()) return false;
+      const s = st(), cost = api.buybackCost();
+      s.cash -= cost;
+      s.shares += cfg.stake.buyback;
+      TC.events.emit("buyback", { cost, shares: cfg.stake.buyback });
+      return true;
     },
 
     // Smoothed cash earned per second (0 while the price is below its record).
@@ -70,7 +83,7 @@ TC.market = (() => {
 
     // Cash a sell would pay right now, and the price after it.
     sellValue() {
-      return st().shares * st().basePrice * cfg.sell.payout * api.sellBonus();
+      return st().shares * cfg.sell.stakePct * st().basePrice * api.sellBonus();
     },
     // Peak-sell multiplier during market events (see trade.js)
     // 0.5x off-peak, 2-4x at an event peak
@@ -94,8 +107,14 @@ TC.market = (() => {
       s.basePrice += amount;
       if (s.basePrice > record) {
         // New high: you get paid for the part above the old record
-        const earned = (s.basePrice - record) * api.cashPerDollar();
+        const rise = s.basePrice - record;
+        const earned = rise * api.cashPerDollar();
         s.cash += earned;
+        // ...paid by selling that slice of your stake (never below the floor)
+        if (s.shares > cfg.stake.floor) {
+          const sold = cfg.stake.cashOut * s.shares * rise / Math.max(s.basePrice, 10);
+          s.shares = Math.max(cfg.stake.floor, s.shares - sold);
+        }
         earnedAcc += earned;
         s.bestPrice = s.basePrice;
       }
@@ -137,6 +156,7 @@ TC.market = (() => {
       const crash = api.sellingIntoCrash();
       const fined = api.fineRisk() && Math.random() < cfg.sell.fineChance;
       s.cash += cash;
+      s.shares *= 1 - cfg.sell.stakePct;
       s.basePrice *= 1 - api.sellDrop();
       s.lastSellAt = s.clock;
       s.sells++;

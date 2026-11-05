@@ -754,3 +754,12 @@ body {
 .div-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; flex: none; }
 .div-bar[data-on="0"] { color: var(--muted); border-color: var(--rule); background: transparent; }
 .div-bar[data-on="0"] .div-dot { box-shadow: none; opacity: 0.5; }
+
+/* Founder stake: header line and desk card */
+.stake-line { margin-top: 4px; font: 500 12px var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.stake-card { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 12px; }
+.stake-row { display: flex; align-items: baseline; gap: 10px; font: 500 12px var(--font-data); font-variant-numeric: tabular-nums; }
+.stake-row b { font: 800 16px var(--font-display); color: var(--text); }
+.stake-row span:last-child { margin-left: auto; color: var(--muted); }
+.stake-btn { padding: 9px 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--line) 50%, transparent); background: color-mix(in srgb, var(--line) 10%, transparent); color: var(--line); font: 600 13px var(--font-data); cursor: pointer; }
+.stake-btn:disabled { opacity: 0.45; cursor: default; }

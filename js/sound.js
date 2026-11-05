@@ -161,6 +161,7 @@ TC.sound = (() => {
       E.on("private", () => sfx.bigChord());
       E.on("offline", () => sfx.coins());
       E.on("dividend", () => sfx.coins());
+      E.on("buyback", () => sfx.kaching());
       E.on("reset", () => paintButton());
       E.on("season", ({ id }) => {
         if (id === "bull") chord([392, 494, 587, 784], { type: "sawtooth", dur: 0.5, vol: 0.12, spread: 0.09 });

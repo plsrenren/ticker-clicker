@@ -21,6 +21,7 @@
     </div>
     <div class="cap-row"><span class="cap-label">Market cap</span><span class="chips"><span class="rsi-chip" id="rsi" hidden></span><span class="debuffs" id="debuffs" hidden></span><span class="season-chip" id="season" hidden></span></span></div>
     <div id="price" class="price">$0.00</div>
+    <div class="stake-line" id="stakeLine">Your stake 10.0% · $0</div>
     <dl class="stats">
       <div><dt>Cash</dt><dd id="cash">$0.00</dd></div>
       <div><dt>Earning</dt><dd id="income">$0.00/s</dd></div>
@@ -74,6 +75,10 @@
         </div>
         <p class="desk-note" id="privateText" hidden></p>
         <button class="private-btn" id="goPrivate" type="button" hidden>Go private</button>
+      </section>
+      <section class="stake-card">
+        <div class="stake-row"><span class="private-label">Your stake</span><b id="stakePct">10.00%</b><span id="stakeVal">$0</span></div>
+        <button type="button" class="stake-btn" id="buyback">Buy back 0.25%</button>
       </section>
       <button type="button" class="div-bar" id="divBar" hidden aria-pressed="true"><span class="div-dot"></span><span id="divText">Dividends</span></button>
       <div class="desk-tabs" id="deskTabs" role="tablist" aria-label="Trading desk sections">

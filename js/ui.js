@@ -53,7 +53,7 @@ TC.ui = (() => {
   }
 
   // A thing is revealed once the player has come within reach of it.
-  const seen = (cost) => st().bestPrice >= cost * 0.3;
+  const seen = (it) => st().bestPrice >= it.reveal * 0.3;
 
   function renderList(items, kind) {
     let shownLocked = false;
@@ -61,7 +61,7 @@ TC.ui = (() => {
       const r = rows[it.id];
       const owned = kind === "generator" ? st().owned[it.id] || 0 : st().upgrades[it.id];
       const cost = kind === "generator" ? TC.market.generatorCost(it) : it.cost;
-      const visible = owned || seen(it.cost);
+      const visible = owned || seen(it);
 
       if (!visible) {
         // Tease exactly one locked entry per list.
@@ -70,7 +70,7 @@ TC.ui = (() => {
         r.btn.classList.add("locked");
         r.btn.disabled = true;
         r.name.textContent = "???";
-        r.desc.textContent = "Reach " + f.money(it.cost * 0.3) + " to reveal";
+        r.desc.textContent = "Reach a " + f.money(it.reveal * 0.3) + " share price";
         r.cost.textContent = "";
         r.count.textContent = "";
         continue;
@@ -259,6 +259,7 @@ TC.ui = (() => {
       bindPrivate();
       bindModeToggle();
       bindTabs();
+      $("buyback").addEventListener("click", () => { TC.market.buyback(); api.refresh(true); });
       buildAchievements();
 
       TC.events.on("sell", (e) => {
@@ -286,6 +287,7 @@ TC.ui = (() => {
       if (flashTimer > 0 && (flashTimer -= dt) <= 0) $("price").classList.remove("tick-up", "tick-down");
 
       $("price").textContent = f.money(TC.market.marketCap(quote));
+      $("stakeLine").textContent = "Your stake " + (TC.market.stakePct() * 100).toFixed(1) + "% · " + f.money(TC.market.stakeValue(quote));
       $("sharePrice").textContent = f.money(quote);
       const open = st().dayOpen;
       const diff = quote - open;
@@ -302,8 +304,8 @@ TC.ui = (() => {
       $("perClick").textContent = "+" + f.money(TC.market.perClick());
       $("perSec").textContent = "+" + f.money(TC.market.perSecond()) + "/s";
       const s = st(), below = s.bestPrice - s.basePrice;
-      $("holdings").textContent = "How cash works: every $1 your price climbs above its record (" + f.money(s.bestPrice) + ") pays " +
-        f.money(TC.market.cashPerDollar()) + "." + (below > 0.005 ? " You're " + f.money(below) + " below it right now." : "");
+      $("holdings").textContent = "How cash works: every $1 your price climbs above its record (" + f.money(s.bestPrice) + ") sells a sliver of your stake for " +
+        f.money(TC.market.cashPerDollar()) + ". SELL dumps 3% of your shares. Buy back in dips to grow it again." + (below > 0.005 ? " You're " + f.money(below) + " below it right now." : "");
 
       // Sell button
       const sb = $("sell"), cd = TC.market.sellCooldown();
@@ -332,15 +334,22 @@ TC.ui = (() => {
       tog.hidden = ownedN === 0;
       tog.textContent = "Owned upgrades · " + ownedN + ($("ownedUpgrades").hidden ? "  ▾" : "  ▴");
       if (!ownedN) $("ownedUpgrades").hidden = true;
-      const upN = cfg.upgrades.filter((u) => seen(u.cost) && !st().upgrades[u.id] && st().cash >= u.cost).length;
+      const upN = cfg.upgrades.filter((u) => seen(u) && !st().upgrades[u.id] && st().cash >= u.cost).length;
       $("upBadge").hidden = upN === 0;
       $("upBadge").textContent = upN;
       renderPrivate();
+      // Founder stake card
+      $("stakePct").textContent = (TC.market.stakePct() * 100).toFixed(2) + "%";
+      $("stakeVal").textContent = f.money(TC.market.stakeValue(st().basePrice));
+      const bb = $("buyback");
+      const full = st().shares + cfg.stake.buyback > cfg.stake.max;
+      bb.disabled = !TC.market.canBuyback();
+      bb.textContent = full ? "Stake maxed at 25%" : "Buy back 0.25% · " + f.money(TC.market.buybackCost());
       renderAchievements();
 
       // Badge: how many things you can buy right now
-      const n = cfg.generators.filter((g) => seen(g.cost) && st().cash >= TC.market.generatorCost(g)).length +
-        cfg.upgrades.filter((u) => seen(u.cost) && !st().upgrades[u.id] && st().cash >= u.cost).length;
+      const n = cfg.generators.filter((g) => seen(g) && st().cash >= TC.market.generatorCost(g)).length +
+        cfg.upgrades.filter((u) => seen(u) && !st().upgrades[u.id] && st().cash >= u.cost).length;
       const b = $("badge");
       b.hidden = n === 0;
       b.textContent = n;

@@ -13,16 +13,29 @@ TC.config = {
 
   // Economy: cash comes from growth. Every $1 the share price climbs above its record pays you cashPerDollar.
   // Dips pay nothing until the price is back above the record.
-  cashPerDollar: 0.5,
+  // Founder stake: you own part of the company. Cash comes from selling a little of it.
+  //   NEW HIGHS  every $1 the price climbs above its record pays cashOut x your shares, and you sell
+  //              the matching shares (about cashOut x shares x rise / price), so your stake shrinks
+  //   SELL       sells sell.stakePct of your shares at once
+  //   BUYBACK    spend cash to buy 0.25% of the company back at the current price (+ fee)
+  //   Dividends pay cash without selling shares. Going private resets the stake.
   sharesOutstanding: 1000000, // market cap = share price x this (the headline number)
-  startShares: 100,      // shares you hold (used by SELL)
+  stake: {
+    start: 100000,       // 10% of the company at IPO
+    cashOut: 0.05,       // cash per $1 of new high = this x your shares (5,000 at a 10% stake)
+    floor: 20000,        // new highs stop selling shares below 2%; they still pay
+    buyback: 2500,       // shares per buyback (0.25% of the company)
+    fee: 0.03,           // buybacks cost 3% over the price
+    max: 250000,         // can't own more than 25%
+    econ: 2,             // save version of this economy (older saves get migrated in state.js)
+  },
   sell: {
     offPeak: 0.5,        // sells outside an event peak pay half
     fineWindow: 30,      // selling again within this many seconds risks an SEC fine...
     fineChance: 0.65,    // ...this often...
     fine: 0.2,           // ...costing this share of your cash
     crashDrop: 0.3,      // selling into a crash drops the price this much instead of the usual drop
-    payout: 0.002,       // a sell pays shares x price x this: 0.2x the price
+    stakePct: 0.03,      // a sell dumps 3% of your shares at the price (x peak bonus / off-peak)
     drop: 0.15,          // and knocks 15% off the price
     cooldown: 15,        // seconds before you can sell again
     minPrice: 5,         // can't sell a penny stock
@@ -85,7 +98,10 @@ TC.config = {
 
 // Cash now only comes from new highs (about $1 per $1 of growth), so prices are scaled down
 // from the base list above. Tune pacing here.
-TC.config.costScale = 1;
+// Costs are in stake-sized cash (x10,000 the old list). `reveal` keeps the old number:
+// a thing shows up once your best share price reaches 30% of it.
+TC.config.costScale = 10000;
 for (const item of [...TC.config.generators, ...TC.config.upgrades]) {
-  item.cost = Math.max(5, Math.round(item.cost * TC.config.costScale));
+  item.reveal = item.cost;
+  item.cost = Math.round(item.cost * TC.config.costScale);
 }

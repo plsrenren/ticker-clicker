@@ -16,7 +16,8 @@ TC.state = (() => {
       listed: false,     // false until the player names their ticker on the IPO screen
       basePrice: 0,      // the "true" price
       cash: 0,           // spendable money, paid out by your shares as dividends
-      shares: TC.config.startShares,
+      shares: TC.config.stake.start, // your founder stake
+      econ: TC.config.stake.econ,
       clock: 0,          // seconds played while listed (drives the sell cooldown)
       sellReadyAt: 0,
       sells: 0,
@@ -54,6 +55,12 @@ TC.state = (() => {
           // merge nested meta objects so new fields get defaults
           for (const k of ["prestige", "lifetime", "settings"]) saved[k] = Object.assign(base[k], saved[k] || {});
           Object.assign(s, base, saved);
+          // Old economy (100 shares, small cash): give the founder stake and scale cash to the new costs
+          if (saved.econ !== TC.config.stake.econ) {
+            s.shares = TC.config.stake.start;
+            s.cash = (s.cash || 0) * TC.config.costScale;
+            s.econ = TC.config.stake.econ;
+          }
         }
       } catch (e) { /* storage unavailable: play without saving */ }
       if (s.basePrice > 0) s.listed = true; // older saves predate the IPO screen
