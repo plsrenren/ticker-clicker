@@ -43,25 +43,29 @@ window.TC = window.TC || {};
     TC.ui.refresh(true);
     fitChart();
     window.addEventListener("resize", fitChart);
-    if (window.ResizeObserver) { const ro = new ResizeObserver(fitChart); ro.observe(document.querySelector(".tape")); ro.observe(document.querySelector(".dock")); }
+    if (window.ResizeObserver) { const ro = new ResizeObserver(fitChart); ro.observe(document.querySelector(".tape")); ro.observe(document.querySelector(".dock")); ro.observe(document.querySelector(".desk")); }
     requestAnimationFrame(loop);
 
     window.claude?.hot?.snapshot?.(() => ({ state: TC.state.data, history: TC.chart.snapshot() }));
   }
 
-  // Phones: the chart canvas fills the screen (see CSS). Keep the plot in the gap between header and dock.
+  // The chart canvas fills the whole screen (see CSS). Keep the plot in the gap between header and dock,
+  // and on wide screens left of the trading desk column.
   function fitChart() {
     const wrap = $("chartWrap");
-    if (window.innerWidth >= 900) {
-      TC.chart.setPad({ t: 18, b: 26 });
-      wrap.style.removeProperty("--plot-t"); wrap.style.removeProperty("--plot-b");
-      return;
-    }
-    const t = Math.round(document.querySelector(".tape").getBoundingClientRect().bottom + 6);
+    const tape = document.querySelector(".tape").getBoundingClientRect();
+    const t = Math.round(tape.bottom + 6);
     const b = Math.round(window.innerHeight - document.querySelector(".dock").getBoundingClientRect().top + 26);
-    TC.chart.setPad({ t, b });
+    let l = 10, r = 0;
+    if (window.innerWidth >= 900) {
+      l = Math.round(tape.left + (parseFloat(getComputedStyle(document.querySelector(".tape")).paddingLeft) || 16));
+      r = Math.round(window.innerWidth - document.querySelector(".desk").getBoundingClientRect().left);
+    }
+    TC.chart.setPad({ t, b, l, r: r + 66 });
     wrap.style.setProperty("--plot-t", t + "px");
     wrap.style.setProperty("--plot-b", b + "px");
+    wrap.style.setProperty("--plot-l", l + "px");
+    wrap.style.setProperty("--plot-r", r + "px");
   }
 
   // Start over. wipe = true deletes everything; false keeps founder points and achievements.
