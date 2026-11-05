@@ -672,3 +672,10 @@ body {
 .cap-row { align-items: flex-start; }
 .cap-label { white-space: nowrap; padding-top: 3px; }
 .debuffs { flex-wrap: wrap; justify-content: flex-end; }
+
+/* Shown only if the game hits a script error */
+.err-banner {
+  position: fixed; left: 12px; right: 12px; top: calc(var(--safe-t) + 8px); z-index: 100;
+  padding: 10px 12px; border-radius: 10px; font-size: 12px; line-height: 1.4;
+  background: var(--down); color: var(--ink); cursor: pointer;
+}

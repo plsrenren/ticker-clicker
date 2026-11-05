@@ -139,9 +139,32 @@ window.TC = window.TC || {};
     document.addEventListener("visibilitychange", () => { if (document.hidden) TC.state.save(); });
   }
 
+  // If something throws, keep the game running and show what broke (once) instead of freezing.
+  let errorShown = false;
+  function reportError(err) {
+    console.error(err);
+    if (errorShown) return;
+    errorShown = true;
+    const el = document.createElement("div");
+    el.className = "err-banner";
+    el.textContent = "Something broke: " + (err && err.message ? err.message : String(err)) + " (the game kept running; tap to hide)";
+    el.addEventListener("click", () => el.remove());
+    document.body.appendChild(el);
+  }
+  window.addEventListener("error", (e) => reportError(e.error || e.message));
+
   function loop(now) {
+    requestAnimationFrame(loop); // schedule first, so one bad frame can't stop the game
+    try { frame(now); } catch (err) { reportError(err); }
+  }
+
+  function frame(now) {
     const dt = Math.max(0, Math.min(0.1, (now - last) / 1000)); // clamp: no jump after a background tab, no negative first frame
     last = now;
+    // Never let a bad number poison the save
+    const s = TC.state.data;
+    if (!Number.isFinite(s.basePrice) || s.basePrice < 0) s.basePrice = Math.max(0, s.bestPrice * 0.5 || 0);
+    if (!Number.isFinite(s.cash)) s.cash = 0;
 
     TC.market.step(dt);
     TC.news.update(dt);
@@ -163,8 +186,6 @@ window.TC = window.TC || {};
 
     if ((uiTimer += dt) > 0.1) { uiTimer = 0; TC.ui.refresh(); }
     if ((saveTimer += dt * 1000) > TC.config.saveMs) { saveTimer = 0; TC.state.save(); }
-
-    requestAnimationFrame(loop);
   }
 
   const hot = window.claude?.hot;
