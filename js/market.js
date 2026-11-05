@@ -166,6 +166,29 @@ TC.market = (() => {
       return true;
     },
 
+    // Cost of the next n of a buyer, and how many you can afford right now
+    generatorCostN(g, n) {
+      const k = st().owned[g.id] || 0, r = cfg.costGrowth;
+      let total = 0;
+      for (let i = 0; i < n; i++) total += Math.ceil(g.cost * Math.pow(r, k + i));
+      return total;
+    },
+    generatorMax(g) {
+      let n = 0, total = 0;
+      const k = st().owned[g.id] || 0;
+      while (n < 1000) {
+        const c = Math.ceil(g.cost * Math.pow(cfg.costGrowth, k + n));
+        if (total + c > st().cash) break;
+        total += c; n++;
+      }
+      return n;
+    },
+    buyGenerators(id, n) {
+      let bought = 0;
+      for (let i = 0; i < n; i++) { if (!api.buyGenerator(id)) break; bought++; }
+      return bought;
+    },
+
     buyUpgrade(id) {
       const u = cfg.upgrades.find((x) => x.id === id);
       if (st().upgrades[id] || st().cash < u.cost) return false;

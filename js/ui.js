@@ -9,24 +9,46 @@ TC.ui = (() => {
   let lastPrice = 0;
   let flashTimer = 0;
 
+  // One-line rows: name + short effect on the left, count and price on the right.
+  // The flavor text lives in the tooltip (title) to keep rows compact.
   function makeRow(item, kind, listEl) {
     const li = document.createElement("li");
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "item";
+    btn.title = item.desc;
     btn.innerHTML =
-      '<span class="item-name"></span><span class="item-count"></span>' +
-      '<span class="item-desc"></span><span class="item-cost"></span>';
+      '<span class="item-main"><span class="item-name"></span><span class="item-desc"></span></span>' +
+      '<span class="item-count"></span><span class="item-cost"></span>';
     btn.addEventListener("click", () => {
-      kind === "generator" ? TC.market.buyGenerator(item.id) : TC.market.buyUpgrade(item.id);
+      if (kind === "generator") TC.market.buyGenerators(item.id, buyCount(item));
+      else TC.market.buyUpgrade(item.id);
       api.refresh(true);
     });
     li.appendChild(btn);
     listEl.appendChild(li);
+    const main = btn.children[0];
     rows[item.id] = {
       li, btn,
-      name: btn.children[0], count: btn.children[1], desc: btn.children[2], cost: btn.children[3],
+      name: main.children[0], desc: main.children[1], count: btn.children[1], cost: btn.children[2],
     };
+  }
+
+  // x1 / x10 / Max for buyers
+  const qty = () => st().settings.buyQty || "1";
+  function buyCount(g) {
+    const q = qty();
+    if (q === "max") return Math.max(1, TC.market.generatorMax(g));
+    return +q;
+  }
+
+  // Short effect text for an upgrade ("2x taps", "1.5x cash" ...)
+  function upgradeEffect(u) {
+    if (u.kind === "mult") return u.value + "x taps";
+    if (u.kind === "gen") return u.value + "x buyers";
+    if (u.kind === "yield") return u.value + "x cash from highs";
+    if (u.kind === "cpsPct") return "taps add " + Math.round(u.value * 100) + "% of buyers";
+    return u.desc;
   }
 
   // A thing is revealed once the player has come within reach of it.
@@ -57,21 +79,60 @@ TC.ui = (() => {
       r.btn.classList.remove("locked");
       r.name.textContent = it.name;
       if (kind === "generator") {
-        const sm = TC.seasons ? TC.seasons.genMult(it.id) : 1;
-        r.desc.textContent = it.desc + " +" + f.money(it.rate * TC.market.genMult() * sm) + "/s each" +
-          (sm < 1 ? " · bear market −" + Math.round((1 - sm) * 100) + "%" : "");
+        const sm = (TC.seasons ? TC.seasons.genMult(it.id) : 1) * (TC.debuffs ? TC.debuffs.genMult(it.id) : 1);
+        r.desc.textContent = "+" + f.money(it.rate * TC.market.genMult() * sm) + "/s each" +
+          (sm < 1 ? " · −" + Math.round((1 - sm) * 100) + "% now" : "");
+        r.desc.classList.toggle("nerfed", sm < 1);
+        const n = buyCount(it);
+        const total = n === 1 ? cost : TC.market.generatorCostN(it, n);
         r.count.textContent = owned || "";
-        r.cost.textContent = f.money(cost);
-        r.btn.disabled = st().cash < cost;
+        r.cost.textContent = (n > 1 ? "x" + n + " " : "") + f.money(total);
+        r.btn.disabled = st().cash < total;
       } else {
-        r.desc.textContent = it.desc;
+        // Bought upgrades move to the collapsed "Owned" list
+        const target = owned ? $("ownedUpgrades") : $("upgrades");
+        if (r.li.parentElement !== target) target.appendChild(r.li);
+        r.desc.textContent = upgradeEffect(it);
         r.count.textContent = owned ? "✓" : "";
-        r.cost.textContent = owned ? "Owned" : f.money(cost);
-        r.btn.disabled = !owned && st().cash < cost;
+        r.cost.textContent = owned ? "" : f.money(cost);
         r.btn.classList.toggle("owned", !!owned);
-        if (owned) r.btn.disabled = true;
+        r.btn.disabled = !!owned || st().cash < cost;
       }
     }
+  }
+
+  function sortUpgrades() {
+    const list = $("upgrades");
+    for (const u of cfg.upgrades) if (rows[u.id].li.parentElement === list) list.appendChild(rows[u.id].li);
+  }
+
+  // ---- Desk tabs, buy amount, owned toggle ----
+  function setTab(tab) {
+    st().settings.deskTab = tab;
+    document.querySelectorAll("#deskTabs [data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+    document.querySelectorAll(".pane").forEach((p) => { p.hidden = p.dataset.pane !== tab; });
+  }
+  function bindTabs() {
+    $("deskTabs").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-tab]");
+      if (b) setTab(b.dataset.tab);
+    });
+    setTab(st().settings.deskTab || "buyers");
+    const paintQty = () => document.querySelectorAll("#buyQty button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.qty === qty())));
+    $("buyQty").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-qty]");
+      if (!b) return;
+      st().settings.buyQty = b.dataset.qty;
+      paintQty();
+      api.refresh(true);
+    });
+    paintQty();
+    $("ownedToggle").addEventListener("click", () => {
+      const open = $("ownedUpgrades").hidden;
+      $("ownedUpgrades").hidden = !open;
+      $("ownedToggle").setAttribute("aria-expanded", String(open));
+      api.refresh(true);
+    });
   }
 
   function setDesk(open) {
@@ -130,12 +191,19 @@ TC.ui = (() => {
   function renderPrivate() {
     const s = st(), pc = cfg.prestige, pts = TC.prestige.available();
     const bonus = (n) => "+" + Math.round(n * pc.perPoint * 100) + "%";
-    $("privatePts").textContent = f.int(s.prestige.points) + " founder points · " + bonus(s.prestige.points);
     const btn = $("goPrivate");
-    if (!TC.prestige.unlocked()) {
-      $("privateText").textContent = "Reach a " + f.money(pc.minPrice) + " share price to go private. You restart from $0 but keep founder points, which boost taps and buyers forever.";
+    const unlocked = TC.prestige.unlocked();
+    $("privateCard").classList.toggle("ready", unlocked);
+    $("privateText").hidden = !unlocked;
+    btn.hidden = !unlocked;
+    // Log scale so early progress is visible: $1 -> 0%, $1M -> 100%
+    const prog = Math.max(0, Math.min(1, Math.log10(Math.max(1, s.bestPrice)) / Math.log10(pc.minPrice)));
+    $("privateFill").style.width = (prog * 100).toFixed(1) + "%";
+    $("privatePts").textContent = unlocked
+      ? f.int(s.prestige.points) + " pts · " + bonus(s.prestige.points)
+      : f.axis(s.bestPrice) + " / " + f.axis(pc.minPrice);
+    if (!unlocked) {
       btn.disabled = true;
-      if (!btn.classList.contains("armed")) btn.textContent = "Locked until " + f.money(pc.minPrice);
     } else {
       $("privateText").textContent = "Take " + f.int(pts) + " founder points (" + bonus(pts) + " forever). Your price, cash, buyers and upgrades reset, and you list again under a new name.";
       btn.disabled = false;
@@ -189,6 +257,7 @@ TC.ui = (() => {
       bindDesk();
       bindPrivate();
       bindModeToggle();
+      bindTabs();
       buildAchievements();
 
       TC.events.on("sell", (e) => {
@@ -232,10 +301,8 @@ TC.ui = (() => {
       $("perClick").textContent = "+" + f.money(TC.market.perClick());
       $("perSec").textContent = "+" + f.money(TC.market.perSecond()) + "/s";
       const s = st(), below = s.bestPrice - s.basePrice;
-      $("holdings").textContent = "You earn cash when your share price sets a new high: every $1 above your record pays " +
-        f.money(TC.market.cashPerDollar()) + ". " + (below > 0.005
-          ? "You're " + f.money(below) + " below your record of " + f.money(s.bestPrice) + ", so nothing pays until you're back above it."
-          : "You're at your record of " + f.money(s.bestPrice) + ", so every tap pays.");
+      $("holdings").textContent = "How cash works: every $1 your price climbs above its record (" + f.money(s.bestPrice) + ") pays " +
+        f.money(TC.market.cashPerDollar()) + "." + (below > 0.005 ? " You're " + f.money(below) + " below it right now." : "");
 
       // Sell button
       const sb = $("sell"), cd = TC.market.sellCooldown();
@@ -259,6 +326,15 @@ TC.ui = (() => {
       $("orders").textContent = f.int(st().orders) + (st().orders === 1 ? " order filled" : " orders filled");
       renderList(cfg.generators, "generator");
       renderList(cfg.upgrades, "upgrade");
+      sortUpgrades();
+      const ownedN = cfg.upgrades.filter((u) => st().upgrades[u.id]).length;
+      const tog = $("ownedToggle");
+      tog.hidden = ownedN === 0;
+      tog.textContent = "Owned upgrades · " + ownedN + ($("ownedUpgrades").hidden ? "  ▾" : "  ▴");
+      if (!ownedN) $("ownedUpgrades").hidden = true;
+      const upN = cfg.upgrades.filter((u) => seen(u.cost) && !st().upgrades[u.id] && st().cash >= u.cost).length;
+      $("upBadge").hidden = upN === 0;
+      $("upBadge").textContent = upN;
       renderPrivate();
       renderAchievements();
 

@@ -679,3 +679,56 @@ body {
   padding: 10px 12px; border-radius: 10px; font-size: 12px; line-height: 1.4;
   background: var(--down); color: var(--ink); cursor: pointer;
 }
+
+/* ---------- Tabbed trading desk (design A) ---------- */
+.private-card { padding: 10px 12px; gap: 8px; }
+.private-row { display: flex; align-items: center; gap: 10px; }
+.private-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.private-bar { flex: 1; height: 4px; border-radius: 2px; background: var(--rule); overflow: hidden; }
+.private-bar i { display: block; height: 100%; width: 0; background: var(--line); transition: width 0.4s ease; }
+.private-card .private-pts { white-space: nowrap; }
+.private-card.ready { border-color: color-mix(in srgb, var(--core) 50%, transparent); }
+.private-card.ready .private-bar i { background: var(--core); }
+
+.desk-tabs {
+  position: sticky; top: 0; z-index: 2;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px;
+  padding: 4px; border: 1px solid var(--rule); border-radius: 14px;
+  background: color-mix(in srgb, var(--ink) 85%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.desk-tabs button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  min-height: 36px; padding: 0 4px; border: 0; border-radius: 10px;
+  background: transparent; color: var(--muted);
+  font-family: var(--font-display); font-weight: 800; font-size: 13px; cursor: pointer;
+}
+.desk-tabs button[aria-selected="true"] { background: var(--text); color: var(--ink); }
+.desk-tabs button:focus-visible { outline: 2px solid var(--line); outline-offset: 2px; }
+.tab-badge { min-width: 16px; padding: 1px 5px; border-radius: 8px; background: var(--line); color: var(--ink); font-family: var(--font-data); font-size: 10px; font-weight: 600; }
+.tab-badge[hidden] { display: none; }
+.pane { display: flex; flex-direction: column; gap: 8px; }
+.pane[hidden] { display: none; }
+
+.qty { align-self: flex-end; display: flex; gap: 3px; padding: 3px; border: 1px solid var(--rule); border-radius: 10px; }
+.qty button { min-width: 40px; min-height: 28px; padding: 0 8px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: 500 11px var(--font-data); cursor: pointer; }
+.qty button[aria-pressed="true"] { background: var(--line); color: var(--ink); font-weight: 600; }
+
+/* compact one-line rows */
+.item { min-height: 48px; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; column-gap: 10px; padding-block: 8px; }
+.item-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.item-name { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-desc { font-size: 11px; color: var(--axis); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-desc.nerfed { color: var(--down); }
+.item-count { font-size: 15px; min-width: 20px; }
+.item-cost { align-self: center; min-width: 58px; white-space: nowrap; }
+.item.locked .item-desc { color: var(--muted); }
+
+.owned-toggle {
+  display: flex; justify-content: space-between; width: 100%;
+  padding: 10px 12px; border: 1px dashed var(--rule); border-radius: 12px;
+  background: transparent; color: var(--muted); font: 500 12px var(--font-data); cursor: pointer; text-align: left;
+}
+.owned-toggle[hidden] { display: none; }
+.owned-list .item { min-height: 40px; padding-block: 6px; }
+.owned-list .item.owned { opacity: 0.55; }

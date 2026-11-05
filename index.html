@@ -67,22 +67,41 @@
     <div class="desk-handle" id="deskHandle"><span></span></div>
     <div class="desk-scroll">
       <section class="private-card" id="privateCard">
-        <div class="private-head"><h2 class="desk-title">Go private</h2><span class="private-pts" id="privatePts">0 founder points</span></div>
-        <p class="desk-note" id="privateText">Reach $1M to go private.</p>
-        <button class="private-btn" id="goPrivate" type="button" disabled>Go private</button>
+        <div class="private-row">
+          <span class="private-label">Go private</span>
+          <span class="private-bar"><i id="privateFill"></i></span>
+          <span class="private-pts" id="privatePts">$0 / $1M</span>
+        </div>
+        <p class="desk-note" id="privateText" hidden></p>
+        <button class="private-btn" id="goPrivate" type="button" hidden>Go private</button>
       </section>
-      <p class="desk-note" id="holdings">You hold 100 shares. They pay dividends from your price every second, so a higher price means more cash.</p>
-      <h2 class="desk-title">Buyers</h2>
-      <p class="desk-note">They buy your stock every second, so the price keeps climbing.</p>
-      <ul id="generators" class="list"></ul>
-      <h2 class="desk-title">Upgrades</h2>
-      <ul id="upgrades" class="list"></ul>
-      <div class="ach-head"><h2 class="desk-title">Achievements</h2><span class="ach-count" id="achCount">0/20</span></div>
-      <ul class="ach-grid" id="achGrid"></ul>
-      <div class="desk-foot">
-        <span class="orders" id="orders">0 orders filled</span>
-        <button id="reset" class="reset" type="button">Delist and wipe everything</button>
+      <div class="desk-tabs" id="deskTabs" role="tablist" aria-label="Trading desk sections">
+        <button type="button" role="tab" data-tab="buyers" aria-selected="true">Buyers</button>
+        <button type="button" role="tab" data-tab="upgrades" aria-selected="false">Upgrades <b class="tab-badge" id="upBadge" hidden>0</b></button>
+        <button type="button" role="tab" data-tab="trophies" aria-selected="false">Trophies</button>
       </div>
+      <section class="pane" data-pane="buyers">
+        <div class="qty" id="buyQty" role="group" aria-label="Buy amount">
+          <button type="button" data-qty="1" aria-pressed="true">x1</button>
+          <button type="button" data-qty="10" aria-pressed="false">x10</button>
+          <button type="button" data-qty="max" aria-pressed="false">Max</button>
+        </div>
+        <ul id="generators" class="list"></ul>
+      </section>
+      <section class="pane" data-pane="upgrades" hidden>
+        <ul id="upgrades" class="list"></ul>
+        <button type="button" class="owned-toggle" id="ownedToggle" hidden aria-expanded="false"></button>
+        <ul id="ownedUpgrades" class="list owned-list" hidden></ul>
+      </section>
+      <section class="pane" data-pane="trophies" hidden>
+        <div class="ach-head"><h2 class="desk-title">Achievements</h2><span class="ach-count" id="achCount">0/20</span></div>
+        <ul class="ach-grid" id="achGrid"></ul>
+        <p class="desk-note" id="holdings"></p>
+        <div class="desk-foot">
+          <span class="orders" id="orders">0 orders filled</span>
+          <button id="reset" class="reset" type="button">Delist and wipe everything</button>
+        </div>
+      </section>
     </div>
   </aside>
 </div>
