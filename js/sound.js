@@ -156,6 +156,7 @@ TC.sound = (() => {
       E.on("hype", ({ tone: t, title }) => { if (t === "down") sfx.buzz(); else if (title) sfx.whoosh(); });
       E.on("stackBuy", () => { stackI = 0; sfx.bassHit(); });
       E.on("purchase", () => sfx.kaching());
+      E.on("split", () => { sfx.bell(); sfx.coins(); });
       E.on("chargeMax", () => { tone({ freq: 660, to: 1320, type: "triangle", dur: 0.16, vol: 0.28 }); tone({ freq: 1320, type: "sine", dur: 0.2, vol: 0.18, delay: 0.12 }); });
       E.on("chargeRelease", ({ max }) => { if (max) sfx.bassHit(); else tone({ freq: 220, to: 440, type: "triangle", dur: 0.12, vol: 0.25 }); });
       E.on("achievement", () => sfx.sparkle());

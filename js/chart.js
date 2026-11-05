@@ -212,7 +212,7 @@ TC.chart = (() => {
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
         ctx.fillStyle = C.axis;
-        ctx.fillText(TC.format.axis(v), w - pad.r + 8, y);
+        ctx.fillText(TC.format.axis(TC.market.px(v)), w - pad.r + 8, y);
       }
 
       // Time labels
@@ -277,7 +277,7 @@ TC.chart = (() => {
       ctx.shadowBlur = 0;
 
       // Price tag pill: green, flashes red on a sell
-      const label = TC.format.axis(history[n - 1]);
+      const label = TC.format.axis(TC.market.px(history[n - 1]));
       ctx.font = '600 11px "IBM Plex Mono", monospace';
       const lw = ctx.measureText(label).width + 14;
       const ly = Math.max(pad.t, Math.min(h - pad.b, t.y));

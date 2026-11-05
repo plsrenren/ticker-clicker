@@ -310,7 +310,7 @@ TC.effects = (() => {
         g.shadowColor = color;
         g.shadowBlur = (i === 0 ? 18 + it.pop * 14 : 0) * glow();
         g.font = `800 ${size}px "Bricolage Grotesque", system-ui, sans-serif`;
-        g.fillText((it.sign > 0 ? "$" : "-$") + TC.format.money(it.amount).slice(1), b.r - 14, it.y);
+        g.fillText((it.sign > 0 ? "$" : "-$") + TC.format.money(TC.market.px(it.amount)).slice(1), b.r - 14, it.y);
         y += size * 0.95;
       });
       g.shadowBlur = 0;
@@ -368,7 +368,7 @@ TC.effects = (() => {
       g.fillRect(tip.x - 5, y, 10, tip.y - y);
     }
     // tag
-    const label = (c.max ? "MAX  " : "") + "+" + TC.format.money(add);
+    const label = (c.max ? "MAX  " : "") + "+" + TC.format.money(TC.market.px(add));
     g.font = '700 13px "IBM Plex Mono", monospace';
     const lw = g.measureText(label).width + 16;
     const lx = b.r - lw - 8, ly = Math.max(b.t + 2, y - 24);
@@ -578,7 +578,7 @@ TC.effects = (() => {
     });
     TC.events.on("sellWall", ({ amount, x, y }) => {
       const tip = TC.chart.tip();
-      api.spawn("floatText", { x: (x ?? tip.x) - 20, y: (y ?? tip.y) - 24, text: "SELL WALL −" + TC.format.money(amount), color: C.down, size: 15, life: 0.9 });
+      api.spawn("floatText", { x: (x ?? tip.x) - 20, y: (y ?? tip.y) - 24, text: "SELL WALL −" + TC.format.money(TC.market.px(amount)), color: C.down, size: 15, life: 0.9 });
       api.spawn("ring", { x: tip.x, y: tip.y, color: C.down, max: 50, life: 0.4 });
     });
     TC.events.on("halted", ({ x, y }) => {
@@ -588,6 +588,13 @@ TC.effects = (() => {
 
     TC.events.on("dipStake", ({ shares, discount }) => {
       api.spawn("floatText", { x: w / 2 - 70, y: h * 0.4, text: "+" + +(shares / TC.config.sharesOutstanding * 100).toFixed(2) + "% STAKE · " + Math.round(discount * 100) + "% OFF", color: C.up, size: 20, life: 1.6 });
+    });
+    TC.events.on("split", ({ factor }) => {
+      api.spawn("floatText", { x: w / 2 - 80, y: h * 0.42, text: factor + "-FOR-1 SPLIT", color: C.core, size: 30, life: 2 });
+      api.spawn("vignette", { color: C.up, life: 1, strength: 0.7 }, 2);
+      api.spawn("pulse", { color: C.core, speed: 220, width: 46, life: 1.4, strength: 1.6 });
+      TC.chart.flash("up");
+      shake(5, 0.35);
     });
     TC.events.on("chargeMax", () => {
       const tip = TC.chart.tip();
@@ -652,7 +659,7 @@ TC.effects = (() => {
       const tip = TC.chart.tip();
       api.spawn("ring", { x: tip.x, y: tip.y, max: 160 });
       api.spawn("pulse", { color: C.core, speed: 260, width: 40, life: 1.2, strength: 1.4 });
-      api.spawn("floatText", { x: w / 2 - 30, y: h * 0.22, text: TC.format.axis(price) + " CROSSED", color: C.up });
+      api.spawn("floatText", { x: w / 2 - 30, y: h * 0.22, text: TC.format.axis(TC.market.px(price)) + " CROSSED", color: C.up });
       shake(4, 0.3);
     });
 

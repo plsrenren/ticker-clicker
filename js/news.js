@@ -36,6 +36,7 @@ TC.news = (() => {
   let active = null;
   let nextAt = null;
   let boostUntil = -1; // rival scandal: buyers 2x
+  let splitBoostUntil = -1; // stock split: buyers 1.5x
   const rival = (avoid) => TC.rivals.pick(avoid);
   // Rival headlines are picked separately from the classic ones (see trigger), weighted by season.
   const CLASSIC = ["headline", "flash", "short", "earnings", "pump"];
@@ -186,6 +187,48 @@ TC.news = (() => {
             return true;
           }
           return t < T + 2;
+        },
+      };
+    },
+
+    // Stock split vote: tap enough in 6s to rally the shareholders and push a 10-for-1 split through.
+    // The split is cosmetic (shown price / 10, market cap unchanged); passing it also pops the price
+    // and makes buyers 1.5x for 20s, because retail loves cheap shares. Failing dips the price a little.
+    split() {
+      const T = 6;
+      const need = Math.round(cfg.news.splitTaps);
+      let t = 0, taps = 0, resolved = false;
+      return {
+        start() {
+          banner.show({ tag: "SPLIT VOTE", tone: "up", text: L("split"), sub: "Tap " + need + " times to win the vote", meter: { a: 0, b: 0 } });
+          TC.events.emit("news", { type: "split", tone: "neutral" });
+        },
+        onTap() { if (!resolved) taps++; },
+        update(dt) {
+          t += dt;
+          if (!resolved) {
+            banner.meter(t / T * 0.5, taps / need * 0.5);
+            banner.sub(Math.max(0, need - taps) + " taps left · " + Math.max(0, T - t).toFixed(1) + "s");
+            if (taps >= need) {
+              resolved = true;
+              st().split = (st().split || 1) * 10;
+              const up = mag(0.06, 0.12);
+              splitBoostUntil = st().clock + 20;
+              banner.show({ tag: "10-FOR-1 SPLIT", tone: "up", text: L("splitWin", { pct: pct(up), bid: TC.format.money(TC.market.px(st().basePrice)) }), sub: "Buyers 1.5x for 20s" });
+              TC.events.emit("split", { factor: 10, total: st().split });
+              TC.events.emit("news", { type: "splitWin", tone: "up", big: true });
+              TC.market.shift(up, "split");
+              t = T;
+            } else if (t >= T) {
+              resolved = true;
+              const down = mag(0.04, 0.08);
+              banner.show({ tag: "VOTE FAILS", tone: "down", text: L("splitLose", { pct: pct(-down) }), sub: "" });
+              TC.events.emit("news", { type: "splitLose", tone: "down" });
+              TC.market.shift(-down, "split");
+            }
+            return true;
+          }
+          return t < T + 2.2;
         },
       };
     },
@@ -373,7 +416,7 @@ TC.news = (() => {
         start() {
           start = st().basePrice;
           bid = start * (1 - mag(0.25, 0.35));
-          banner.show({ tag: "HOSTILE BID", tone: "down", text: L("hostile", { r: "$" + R, bid: TC.format.money(bid) }), sub: "Tap " + need + " times to reject it", meter: { a: 0, b: 0 } });
+          banner.show({ tag: "HOSTILE BID", tone: "down", text: L("hostile", { r: "$" + R, bid: TC.format.money(TC.market.px(bid)) }), sub: "Tap " + need + " times to reject it", meter: { a: 0, b: 0 } });
           TC.events.emit("news", { type: "hostile", tone: "down", big: true });
         },
         onTap() { if (!resolved) taps++; },
@@ -454,16 +497,17 @@ TC.news = (() => {
     types,
     active: () => active,
     // Buyer multiplier from news: rival scandal (2x for 10s) and index inclusion (+25% for the run)
-    buyerMult: () => (st().clock < boostUntil ? 2 : 1) * (st().indexed ? 1.25 : 1),
+    buyerMult: () => (st().clock < boostUntil ? 2 : 1) * (st().clock < splitBoostUntil ? 1.5 : 1) * (st().indexed ? 1.25 : 1),
 
     init() {
       TC.events.on("buy", (e) => { if (!e.stack && active && active.onTap) active.onTap(); });
-      TC.events.on("reset", () => { active = null; nextAt = null; boostUntil = -1; banner.hide(); });
+      TC.events.on("reset", () => { active = null; nextAt = null; boostUntil = -1; splitBoostUntil = -1; banner.hide(); });
     },
 
     trigger(name, opts) {
       if (active) return false;
       // 40% of random events involve a rival ticker
+      if (!name && TC.market.px(st().basePrice) >= 1000 && Math.random() < cfg.news.splitChance) name = "split";
       if (!name) name = Math.random() < 0.4 ? pickRival() : (TC.seasons ? TC.seasons.pickNews(CLASSIC) : pick(CLASSIC));
       const make = types[name];
       active = make(opts);

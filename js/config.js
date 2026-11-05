@@ -71,7 +71,9 @@ TC.config = {
     maxGap: 55,
     minPrice: 5,         // events start at a $5M market cap (small ones: see intensity in news.js)
     intensity: { min: 0.5, perDecade: 0.12, max: 1.1 }, // event size x0.5 at $5M cap, x0.74 at $500M, x0.98 at $50B, x1.1 at $500B+ (sim-tuned: same end time)
-    shortTaps: 25,       // taps needed to beat a short attack (6 seconds)
+    shortTaps: 25,
+    splitTaps: 30,       // taps in 6s to push a stock split through (only offered above a $1,000 share price)
+    splitChance: 0.35,   // chance a random event is a split vote while the shown price is $1,000+       // taps needed to beat a short attack (6 seconds)
   },
 
   // Passive buyers: each owned unit buys `rate` dollars of your stock per second.

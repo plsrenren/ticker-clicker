@@ -112,6 +112,15 @@ TC.flavor = (() => {
     handlesSmall: ["@my_cousin_trades", "@dave_from_accounting", "@pennystockpete", "@300followers", "@uncle_gary_invests"],
     handlesBig: ["@the_richest_man", "@famous_rapper", "@ex_president", "@pop_superstar", "@sovereign_fund_ceo"],
 
+    split: [
+      "{you} board proposes a 10-for-1 stock split",
+      "{you} wants to split its stock. Shareholders vote now",
+      "Split vote: should {you} shares get 10x cheaper?",
+      "{you} CEO: \"our shares are too expensive to meme\"",
+    ],
+    splitWin: ["Split approved. {you} now trades at {bid}. {pct}", "10-for-1 done. Retail piles in at {bid}. {pct}", "Cheap shares! {you} at {bid} and climbing. {pct}"],
+    splitLose: ["Shareholders vote no on the split. {you} {pct}", "Split rejected: \"we like our expensive shares\". {pct}", "Not enough votes. No split. {you} {pct}"],
+
     // ---- rival events ----
     takeover: [
       "{r} in talks to buy {you}",

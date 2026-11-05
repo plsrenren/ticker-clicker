@@ -28,6 +28,7 @@ TC.state = (() => {
       dayOpen: 0,        // price at the start of this session, for the change readout
       bestPrice: 0,      // best price this run (drives reveals and founder points)
       season: null,
+      split: 1,          // stock split factor: the price you see is basePrice / split (display only)
       lastSellAt: -1e9,  // game clock of your last sell (SEC fine window)
       debuffs: {},       // debuff id -> game clock time it ends
       dividendsOn: true, // dividend payouts switched on (dividends.js)

@@ -81,7 +81,7 @@ TC.ui = (() => {
       r.name.textContent = it.name;
       if (kind === "generator") {
         const sm = (TC.seasons ? TC.seasons.genMult(it.id) : 1) * (TC.debuffs ? TC.debuffs.genMult(it.id) : 1);
-        r.desc.textContent = "+" + f.money(it.rate * TC.market.genMult() * sm) + "/s each" +
+        r.desc.textContent = "+" + f.money(TC.market.px(it.rate * TC.market.genMult() * sm)) + "/s each" +
           (sm < 1 ? " · −" + Math.round((1 - sm) * 100) + "% now" : "");
         r.desc.classList.toggle("nerfed", sm < 1);
         const n = buyCount(it);
@@ -288,11 +288,11 @@ TC.ui = (() => {
 
       $("price").textContent = f.money(TC.market.marketCap(quote));
       $("stakeLine").textContent = "Your stake " + (TC.market.stakePct() * 100).toFixed(1) + "% · " + f.money(TC.market.stakeValue(quote));
-      $("sharePrice").textContent = f.money(quote);
+      $("sharePrice").textContent = f.money(TC.market.px(quote));
       const open = st().dayOpen;
       const diff = quote - open;
       const ch = $("change");
-      ch.textContent = (diff >= 0 ? "+" : "-") + f.money(Math.abs(diff)).slice(1) +
+      ch.textContent = (diff >= 0 ? "+" : "-") + f.money(TC.market.px(Math.abs(diff))).slice(1) +
         " (" + (open > 0 ? f.pct(diff / open) : diff > 0 ? "IPO" : "0.00%") + ")";
       ch.className = "change " + (diff > 0.004 ? "up" : diff < -0.004 ? "down" : "flat");
       lastPrice = quote;
@@ -301,8 +301,8 @@ TC.ui = (() => {
     refresh(force) {
       $("cash").textContent = f.money(st().cash);
       $("income").textContent = f.money(TC.market.income()) + "/s";
-      $("perClick").textContent = "+" + f.money(TC.market.perClick());
-      $("perSec").textContent = "+" + f.money(TC.market.perSecond()) + "/s";
+      $("perClick").textContent = "+" + f.money(TC.market.px(TC.market.perClick()));
+      $("perSec").textContent = "+" + f.money(TC.market.px(TC.market.perSecond())) + "/s";
       const s = st(), below = s.bestPrice - s.basePrice;
       $("holdings").textContent = "How cash works: every $1 your price climbs above its record (" + f.money(s.bestPrice) + ") sells a sliver of your stake for " +
         f.money(TC.market.cashPerDollar()) + ". SELL dumps 3% of your shares. Buy back in dips to grow it again." + (below > 0.005 ? " You're " + f.money(below) + " below it right now." : "");

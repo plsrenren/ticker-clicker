@@ -44,8 +44,8 @@ TC.rivals = (() => {
     for (const c of cells) {
       let sym, price, ch;
       if (c.you) {
-        sym = s.symbol; price = TC.market.quote();
-        ch = s.dayOpen > 0 ? price / s.dayOpen - 1 : price > 0 ? 1 : 0;
+        sym = s.symbol; price = TC.market.px(TC.market.quote());
+        ch = s.dayOpen > 0 ? TC.market.quote() / s.dayOpen - 1 : price > 0 ? 1 : 0;
       } else {
         sym = c.r.sym; price = c.r.price; ch = price / c.r.open - 1;
       }

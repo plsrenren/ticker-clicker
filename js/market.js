@@ -107,6 +107,10 @@ TC.market = (() => {
     // Smoothed cash earned per second (0 while the price is below its record).
     income: () => earnRate,
 
+    // Price as the player sees it: stock splits divide the shown price (and every per-share $ amount)
+    // without touching the real economy, which keeps running on the unsplit basePrice.
+    px: (v) => v / (st().split || 1),
+
     // Headline number: share price x shares outstanding.
     marketCap: (price) => (price ?? api.quote()) * cfg.sharesOutstanding,
 

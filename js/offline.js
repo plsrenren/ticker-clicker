@@ -28,7 +28,7 @@ TC.offline = (() => {
       const dCash = s.cash - cashBefore;
 
       $("offTime").textContent = duration(secs);
-      $("offPrice").textContent = "+" + TC.format.money(dPrice);
+      $("offPrice").textContent = "+" + TC.format.money(TC.market.px(dPrice));
       $("offCash").textContent = "+" + TC.format.money(dCash);
       $("offSym").textContent = "$" + s.symbol;
       $("offline").hidden = false;
