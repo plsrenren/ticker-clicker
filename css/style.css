@@ -644,9 +644,17 @@ body {
 .season-chip[data-warn="bull"] { color: var(--up); }
 .season-chip[data-warn="bear"] { color: var(--down); }
 @keyframes season-blink { 50% { opacity: 0.35; } }
+/* Season without a chip: a sky tint behind everything plus a thin glowing frame around the screen.
+   Bull: green haze from the top. Bear: red haze from the bottom. Flat: neutral. */
+.season-chip { display: none !important; }
 .chart-wrap { transition: background 1.5s ease; }
-:root[data-season="bull"] .chart-wrap { background: radial-gradient(120% 80% at 70% 0%, color-mix(in srgb, var(--up) 7%, var(--ink)), var(--ink) 70%); }
-:root[data-season="bear"] .chart-wrap { background: radial-gradient(120% 80% at 70% 100%, color-mix(in srgb, var(--down) 9%, var(--ink)), var(--ink) 70%); }
+:root[data-season="bull"] .chart-wrap { background: radial-gradient(130% 70% at 60% 0%, color-mix(in srgb, var(--up) 20%, var(--ink)), var(--ink) 75%); }
+:root[data-season="bear"] .chart-wrap { background: radial-gradient(130% 70% at 50% 100%, color-mix(in srgb, var(--down) 22%, var(--ink)), var(--ink) 75%); }
+:root[data-season="side"] .chart-wrap { background: radial-gradient(130% 70% at 50% 50%, color-mix(in srgb, #88aaaa 8%, var(--ink)), var(--ink) 75%); }
+.app::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 3; transition: box-shadow 1.5s ease; }
+:root[data-season="bull"] .app::after { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--up) 55%, transparent), inset 0 0 38px color-mix(in srgb, var(--up) 11%, transparent); }
+:root[data-season="bear"] .app::after { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--down) 55%, transparent), inset 0 0 38px color-mix(in srgb, var(--down) 13%, transparent); }
+:root[data-season="side"] .app::after { box-shadow: inset 0 0 0 1px color-mix(in srgb, #99bbbb 25%, transparent); }
 @media (prefers-reduced-motion: reduce) { .season-chip { animation: none !important; } }
 
 /* Debuff chips (red timers) next to the season chip */
@@ -812,3 +820,11 @@ body {
 .rv.rv-hot { color: var(--text); text-shadow: 0 0 10px currentColor; }
 .rv.rv-hot[data-dir="up"] { color: var(--up); }
 .rv.rv-hot[data-dir="down"] { color: var(--down); }
+
+/* Season tint shows through the top and bottom bars */
+:root[data-season] .rivals { background: transparent; }
+:root[data-season] .tape { background: linear-gradient(to bottom, color-mix(in srgb, var(--ink) 70%, transparent) 50%, transparent); }
+@media (max-width: 899px) {
+  :root[data-season] .dock { background: linear-gradient(to top, color-mix(in srgb, var(--ink) 80%, transparent) 45%, transparent); }
+}
+@media (min-width: 900px) { :root[data-season] .tape { background: transparent; } }
