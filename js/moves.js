@@ -32,7 +32,8 @@ TC.moves = (() => {
   function start() {
     const bag = (TC.seasons && TC.seasons.moveBag()) || BAG;
     segs = shapes[bag[Math.floor(Math.random() * bag.length)]]();
-    const amp = TC.seasons ? TC.seasons.moveAmp() : 1; // bear markets swing harder
+    // bear markets swing harder, and so do big companies
+    const amp = (TC.seasons ? TC.seasons.moveAmp() : 1) * TC.market.noiseAmp();
     if (amp !== 1) for (const sg of segs) sg.f = Math.max(-0.5, sg.f * amp);
     seg = 0; segT = 0; acc = 0; applied = 0;
   }

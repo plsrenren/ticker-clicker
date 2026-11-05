@@ -13,6 +13,7 @@ TC.effects = (() => {
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const token = (name) => getComputedStyle(document.documentElement).getPropertyValue("--" + name).trim();
   let C = {};
+  const FRENZY = "#ffc83d"; // market frenzy gold
   // Canvas glow (shadowBlur) is the most expensive thing we draw; main.js turns it off on slow devices
   const glow = () => (TC.perf && TC.perf.low ? 0 : 1);
 
@@ -547,8 +548,9 @@ TC.effects = (() => {
     });
 
     TC.events.on("season", ({ id, name, cause }) => {
-      const color = id === "bull" ? C.up : id === "bear" ? C.down : C.core;
+      const color = id === "bull" ? C.up : id === "bear" ? C.down : id === "frenzy" ? FRENZY : C.core;
       api.spawn("floatText", { x: w / 2 - 30, y: h * 0.45, text: name.toUpperCase(), color, size: 32, life: 2.2 });
+      if (id === "frenzy") { api.spawn("floatText", { x: w / 2 - 30, y: h * 0.45 + 34, text: "EVERYONE PILES IN", color, size: 16, life: 2.2 }); shake(8, 0.6); }
       if (cause === "news") api.spawn("floatText", { x: w / 2 - 30, y: h * 0.45 + 34, text: id === "bear" ? "THE MOOD SOURS" : "THE MOOD TURNS", color, size: 16, life: 2.2 });
       api.spawn("vignette", { color, life: 1.4, strength: 0.8 }, 2);
       api.spawn("pulse", { color, speed: 200, width: 50, life: 1.6, strength: 1.6 });
@@ -559,6 +561,13 @@ TC.effects = (() => {
       api.spawn("floatText", { x: w / 2 - 30, y: h * 0.45, text: name.toUpperCase() + " IN 15s", color, size: 20, life: 1.8 });
     });
 
+    TC.events.on("marginCall", () => {
+      const tip = TC.chart.tip();
+      api.spawn("floatText", { x: w / 2 - 40, y: h * 0.5, text: "MARGIN CALL", color: C.down, size: 30, life: 1.6 });
+      api.spawn("vignette", { color: C.down, life: 0.9, strength: 0.8 }, 2);
+      api.spawn("ring", { x: tip.x, y: tip.y, color: C.down, max: 150, life: 0.7 });
+      shake(6, 0.35);
+    });
     TC.events.on("backfire", ({ title }) => {
       const tip = TC.chart.tip();
       api.spawn("floatText", { x: w / 2 - 30, y: h * 0.5, text: title, color: C.down, size: 30, life: 1.6 });

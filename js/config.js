@@ -32,6 +32,9 @@ TC.config = {
     max: 250000,         // can't own more than 25%
     insiderBump: 0.03,   // bear market: a buyback is priced at the current price, bumps it 3% (once per calm window)...
     insiderCalm: 10,     // ...and pauses the bear bleed for 10s
+    marginDrop: 0.1,     // Margin Account: a drop this far below the recent high triggers a margin call...
+    marginHit: [0.06, 0.1], // ...that dumps the price this much more...
+    marginGap: 25,       // ...at most once every 25s
     hostileShares: 10000, // losing a hostile bid sells 1% of the company (at most 20% of your shares) at the bid
     dipShares: 5000,     // BUY THE DIP also buys up to 0.5% of the company at the dip price (no fee), once per event
     econ: 2,             // save version of this economy (older saves get migrated in state.js)
@@ -73,6 +76,8 @@ TC.config = {
     intensity: { min: 0.5, perDecade: 0.12, max: 1.1 }, // event size x0.5 at $5M cap, x0.74 at $500M, x0.98 at $50B, x1.1 at $500B+ (sim-tuned: same end time)
     shortTaps: 25,
     splitTaps: 30,       // taps in 6s to push a stock split through (only offered above a $1,000 share price)
+    opexTaps: 0.065,     // options expiry: pressure each tap adds (sellers pull it down 0.2/s, so about 3 taps/s holds it)
+    gammaTaps: 14,       // taps in 4s after a short squeeze to set off the gamma squeeze leg
     splitChance: 0.35,   // chance a random event is a split vote while the shown price is $1,000+       // taps needed to beat a short attack (6 seconds)
   },
 
@@ -99,11 +104,12 @@ TC.config = {
     { id: "agency",  name: "Hype Agency",     desc: "Hype moves come back 25% sooner.",       cost: 600,     kind: "perk",   short: "hype cooldowns −25%" },
     { id: "prfirm",  name: "PR Firm",         desc: "Bad headlines hit 30% softer, and each defending tap saves more.", cost: 1200, kind: "perk", short: "headlines −30%, taps save more" },
     { id: "drip",    name: "Dividend Reinvestment", desc: "Dividends buy back stake instead of paying cash. No fee.", cost: 1500, kind: "perk", short: "dividends → stake, no fee" },
-    { id: "margin",  name: "Margin Account",  desc: "Borrowed money buys more. 2x per buy.",  cost: 500,     kind: "mult",   value: 2 },
+    { id: "margin",  name: "Margin Account",  desc: "Borrowed money buys more: 3x per buy. A 10% drop triggers a margin call dump.", cost: 500, kind: "mult", value: 3 },
     { id: "beat",    name: "Earnings Beat",   desc: "Every buyer buys 2x as much.",           cost: 2500,    kind: "gen",    value: 2 },
     { id: "intel",   name: "Short Intel",     desc: "Short attacks and split votes need 20% fewer taps.", cost: 3000, kind: "perk", short: "tap events −20% taps" },
     { id: "options", name: "Call Options",    desc: "Leverage on every order. 3x per buy.",   cost: 6000,    kind: "mult",   value: 3 },
     { id: "diamond", name: "Diamond Hands Club", desc: "Retail traders and finfluencers keep half their buying in bear markets.", cost: 8000, kind: "perk", short: "bear: retail keeps 50%" },
+    { id: "meme",    name: "Meme Status",     desc: "The internet adopts you. Every market event swings 1.5x bigger, good and bad.", cost: 12000, kind: "perk", short: "events swing 1.5x" },
     { id: "div2",    name: "Analyst Upgrade", desc: "2x cash from every new high.",           cost: 20000,   kind: "yield",  value: 2 },
     { id: "algo",    name: "Algo Execution",  desc: "Each buy adds 2% of buy volume.",        cost: 40000,   kind: "cpsPct", value: 0.02 },
     { id: "algobb",  name: "Algo Buyback Desk", desc: "In a bear, auto-buys back a stake chunk whenever the discount passes 25% and you have the cash.", cost: 25000, kind: "perk", short: "auto bear buybacks" },

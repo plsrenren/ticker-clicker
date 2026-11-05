@@ -168,9 +168,11 @@ TC.sound = (() => {
       E.on("reset", () => paintButton());
       E.on("season", ({ id }) => {
         if (id === "bull") chord([392, 494, 587, 784], { type: "sawtooth", dur: 0.5, vol: 0.12, spread: 0.09 });
+        else if (id === "frenzy") chord([523, 659, 784, 1047, 1319], { type: "square", dur: 0.45, vol: 0.09, spread: 0.06 });
         else if (id === "bear") chord([392, 330, 262, 196], { type: "sawtooth", dur: 0.6, vol: 0.12, spread: 0.12 });
         else chord([440, 440], { type: "triangle", dur: 0.4, vol: 0.2, spread: 0.2 });
       });
+      E.on("marginCall", () => { sfx.buzz(); tone({ freq: 240, to: 50, type: "square", dur: 0.5, vol: 0.16 }); });
       E.on("backfire", () => { sfx.buzz(); tone({ freq: 300, to: 60, type: "sawtooth", dur: 0.6, vol: 0.2 }); });
       // Big moves: deeper, louder hit for bigger tiers
       E.on("bigMove", ({ dir, tier }) => {

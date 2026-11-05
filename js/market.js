@@ -25,7 +25,8 @@ TC.market = (() => {
     return base * (0.55 + Math.random() * 0.9);
   }
   let earnRate = 0;
-  let algoT = 1;       // Algo Buyback Desk check timer    // smoothed cash per second, for the UI
+  let algoT = 1;       // Algo Buyback Desk check timer
+  let marginPeak = 0, marginReadyAt = 0; // Margin Account: recent high (decays ~0.8%/s) and call cooldown
 
   function upgradeProduct(kind) {
     if (TC.debuffs && TC.debuffs.active("poach")) return 1; // exec poached: upgrades off
@@ -35,6 +36,8 @@ TC.market = (() => {
   const api = {
     // Owns a perk upgrade (poached execs switch upgrades off)
     has: (id) => !!st().upgrades[id] && !(TC.debuffs && TC.debuffs.active("poach")),
+    // Background noise (silent moves, wobble) grows with the company: 1x under $100M cap, +0.1x per 10x, max 1.5x
+    noiseAmp: () => Math.max(1, Math.min(1.5, 1 + 0.1 * Math.log10(Math.max(1, api.marketCap(st().basePrice) / 1e8)))),
     generatorCost(g) {
       return Math.ceil(g.cost * Math.pow(cfg.costGrowth, st().owned[g.id] || 0));
     },
@@ -299,6 +302,17 @@ TC.market = (() => {
           TC.events.emit("order", { amount, id: g.id, name: g.name });
         }
       }
+      // Margin call: owning Margin Account means a sharp drop forces a dump
+      if (s.upgrades.margin && s.basePrice > 0) {
+        marginPeak = Math.max(s.basePrice, marginPeak * (1 - 0.008 * dt));
+        if (s.basePrice < marginPeak * (1 - cfg.stake.marginDrop) && s.clock >= marginReadyAt && s.basePrice >= 5) {
+          marginReadyAt = s.clock + cfg.stake.marginGap;
+          const [a, b] = cfg.stake.marginHit;
+          api.shift(-(a + Math.random() * (b - a)), "margin");
+          marginPeak = s.basePrice;
+          TC.events.emit("marginCall", {});
+        }
+      }
       if (api.has("algobb") && (algoT -= dt) <= 0) {
         algoT = 1;
         if (api.buybackBear() && api.buybackDiscount() >= 0.25 && api.canBuyback()) api.buyback();
@@ -309,9 +323,10 @@ TC.market = (() => {
         earnedAcc = 0;
       }
 
-      wobble += (Math.random() - 0.5) * cfg.wobble * 0.6 * Math.min(dt * 10, 1);
+      wobble += (Math.random() - 0.5) * cfg.wobble * api.noiseAmp() * 0.6 * Math.min(dt * 10, 1);
       wobble *= 0.97;
-      wobble = Math.max(-cfg.wobble, Math.min(cfg.wobble, wobble));
+      const wob = cfg.wobble * api.noiseAmp();
+      wobble = Math.max(-wob, Math.min(wob, wobble));
 
       // Profit-takers: a short red dip now and then. Moves the shown quote only.
       dipTimer -= dt;

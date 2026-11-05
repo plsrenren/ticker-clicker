@@ -121,6 +121,15 @@ TC.flavor = (() => {
     splitWin: ["Split approved. {you} now trades at {bid}. {pct}", "10-for-1 done. Retail piles in at {bid}. {pct}", "Cheap shares! {you} at {bid} and climbing. {pct}"],
     splitLose: ["Shareholders vote no on the split. {you} {pct}", "Split rejected: \"we like our expensive shares\". {pct}", "Not enough votes. No split. {you} {pct}"],
 
+    opex: [
+      "Options expiry: billions in {you} contracts pinned at {bid}",
+      "Max pain is {bid}. Market makers want {you} pinned there",
+      "Triple witching: {you} stuck at {bid} as options expire",
+    ],
+    opexUp: ["Calls print! {you} rips off the pin. {pct}", "Pin breaks upward: {you} {pct}", "Call holders cash in, {you} {pct}"],
+    opexDown: ["Puts pay out. {you} drops off the pin. {pct}", "Pin breaks down: {you} {pct}", "Max pain wins. {you} {pct}"],
+    gamma: ["Gamma squeeze! Dealers forced to buy {you}. {pct}", "Second leg: options dealers chase {you} {pct}", "Calls go in the money, dealers panic-buy {you}. {pct}"],
+
     // ---- rival events ----
     takeover: [
       "{r} in talks to buy {you}",

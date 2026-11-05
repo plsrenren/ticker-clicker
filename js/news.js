@@ -23,7 +23,7 @@ TC.news = (() => {
   const I = cfg.news.intensity;
   const intensity = () => Math.max(I.min, Math.min(I.max, I.min + I.perDecade * Math.log10(Math.max(1, cap() / 5e6))));
   // A move size scaled by intensity (never a 90%+ wipeout)
-  const mag = (a, b) => Math.min(0.85, rand(a, b) * intensity());
+  const mag = (a, b) => Math.min(0.85, rand(a, b) * intensity() * (TC.market.has("meme") ? 1.5 : 1));
   // "small" under $100M, "big" from $50B: flavor.js pools named key + "Small" / key + "Big" are used when they exist
   const tier = () => (cap() < 1e8 ? "Small" : cap() >= 5e10 ? "Big" : "");
   // Flavor text (flavor.js): L("key", { r: "$SNEK", pct: "+20%" })
@@ -39,11 +39,12 @@ TC.news = (() => {
   let splitBoostUntil = -1; // stock split: buyers 1.5x
   const rival = (avoid) => TC.rivals.pick(avoid);
   // Rival headlines are picked separately from the classic ones (see trigger), weighted by season.
-  const CLASSIC = ["headline", "flash", "short", "earnings", "pump"];
+  const CLASSIC = ["headline", "flash", "short", "earnings", "pump", "opex"];
   const RIVAL_W = {
     bull: { takeover: 3, rivalScandal: 2, partner: 2, copycat: 1, hostile: 1, sector: 0.3, poach: 1 },
     bear: { takeover: 1, rivalScandal: 1, partner: 0.5, copycat: 2, hostile: 2, sector: 3, poach: 2 },
     side: { takeover: 1, rivalScandal: 1, partner: 1, copycat: 1, hostile: 1, sector: 1, poach: 1 },
+    frenzy: { takeover: 2, rivalScandal: 2, partner: 1, copycat: 1, hostile: 2, sector: 1, poach: 0.5 },
   };
   function pickRival() {
     const w = RIVAL_W[(TC.seasons && TC.seasons.current()) || "side"] || RIVAL_W.side;
@@ -159,14 +160,37 @@ TC.news = (() => {
       const T = 6;
       const need = Math.round(cfg.news.shortTaps * (TC.market.has("intel") ? 0.8 : 1));
       let t = 0, taps = 0, resolved = false;
+      let gamma = null; // { t, taps, done } second leg after a squeeze
+      const gNeed = Math.round(cfg.news.gammaTaps * (TC.market.has("intel") ? 0.8 : 1));
       return {
         start() {
           banner.show({ tag: "SHORT ATTACK", tone: "down", text: L("short"), sub: "Tap " + need + " times before the red bar fills", meter: { a: 0, b: 0 } });
           TC.events.emit("news", { type: "short", tone: "down" });
         },
-        onTap() { if (!resolved) taps++; },
+        onTap() { if (!resolved) taps++; else if (gamma && !gamma.done) gamma.taps++; },
         update(dt) {
           t += dt;
+          if (gamma) {
+            // Gamma squeeze: dealers who sold calls have to buy too. Keep tapping to set it off.
+            gamma.t += dt;
+            if (!gamma.done) {
+              const G = 4;
+              banner.meter(gamma.t / G * 0.5, gamma.taps / gNeed * 0.5);
+              banner.sub("Keep tapping: " + Math.max(0, gNeed - gamma.taps) + " taps · " + Math.max(0, G - gamma.t).toFixed(1) + "s");
+              if (gamma.taps >= gNeed) {
+                gamma.done = true; gamma.t = 0;
+                const up = mag(0.1, 0.2);
+                banner.show({ tag: "GAMMA SQUEEZE", tone: "up", text: L("gamma", { pct: pct(up) }), sub: "" });
+                TC.events.emit("news", { type: "gamma", tone: "up", big: true });
+                TC.market.shift(up, "short");
+              } else if (gamma.t >= G) {
+                gamma.done = true; gamma.t = 1.2; // fizzles: short outro
+                banner.sub("The squeeze runs out of steam");
+              }
+              return true;
+            }
+            return gamma.t < 2.2;
+          }
           if (!resolved) {
             banner.meter(t / T * 0.5, taps / need * 0.5);
             banner.sub(Math.max(0, need - taps) + " taps left · " + Math.max(0, T - t).toFixed(1) + "s");
@@ -177,6 +201,7 @@ TC.news = (() => {
               TC.events.emit("news", { type: "squeeze", tone: "up", big: true });
               TC.market.shift(up, "short");
               t = T; // start the outro timer
+              gamma = { t: -1.2, taps: 0, done: false }; // let the squeeze banner read, then offer the second leg
             } else if (t >= T) {
               resolved = true;
               const down = mag(0.2, 0.3);
@@ -187,6 +212,56 @@ TC.news = (() => {
             return true;
           }
           return t < T + 2;
+        },
+      };
+    },
+
+    // Options expiry: the price gets pinned to the "max pain" strike for 7s while sellers lean on it.
+    // Taps push the pressure meter up, sellers drag it down. When the clock hits zero the pin lets go and
+    // the price whips the way the pressure points: up if you held it above the strike, down if not.
+    opex() {
+      const T = 7;
+      const strike = st().basePrice;
+      const per = cfg.news.opexTaps;
+      let t = 0, p = 0, acc = 0, resolved = false;
+      const shown = () => TC.format.money(TC.market.px(strike));
+      return {
+        start() {
+          banner.show({ tag: "OPTIONS EXPIRY", tone: "neutral", text: L("opex", { bid: shown() }), sub: "Hold it above " + shown() + " when the clock hits 0", meter: { a: 0, b: 0 } });
+          TC.events.emit("news", { type: "opex", tone: "neutral" });
+        },
+        onTap() { if (!resolved) p = Math.min(1, p + per); },
+        update(dt) {
+          t += dt;
+          if (!resolved) {
+            p = Math.max(-1, p - 0.2 * dt + (Math.random() - 0.5) * 0.12 * dt);
+            // Pin the price to the strike, nudged by the pressure
+            if ((acc += dt) >= 0.1) {
+              acc = 0;
+              const step = strike * (1 + 0.03 * p) / st().basePrice - 1;
+              if (Math.abs(step) > 1e-4) TC.market.shift(step, "opex");
+            }
+            banner.meter(Math.max(0, -p), Math.max(0, p));
+            banner.sub((p >= 0 ? "Above " : "Below ") + shown() + " · " + Math.max(0, T - t).toFixed(1) + "s");
+            if (t >= T) {
+              resolved = true;
+              const k = 0.4 + 0.6 * Math.abs(p);
+              if (p >= 0) {
+                const up = mag(0.1, 0.22) * k;
+                banner.show({ tag: "CALLS PAY", tone: "up", text: L("opexUp", { pct: pct(up) }), sub: "" });
+                TC.events.emit("news", { type: "opexUp", tone: "up", big: up > 0.12 });
+                TC.market.shift(up, "opex");
+              } else {
+                const down = mag(0.12, 0.25) * k;
+                banner.show({ tag: "PUTS PAY", tone: "down", text: L("opexDown", { pct: pct(-down) }), sub: "" });
+                TC.events.emit("news", { type: "opexDown", tone: "down", big: down > 0.12 });
+                TC.market.shift(-down, "opex");
+              }
+              t = T;
+            }
+            return true;
+          }
+          return t < T + 2.2;
         },
       };
     },

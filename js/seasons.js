@@ -29,6 +29,14 @@ TC.seasons = (() => {
       bag: ["drop", "drop", "slide", "slide", "wick", "chop", "spike"],
       bleed: 0.004, // fraction of price lost per second (about -20% over a minute)
     },
+    frenzy: {
+      // Rare and short: everyone piles in, events come twice as fast, and every swing is doubled.
+      name: "Market frenzy", short: "FRENZY", buyer: 2.2, beat: 0.5, gap: 0.5, peakExtra: 1, dipLine: 0.9, stack: 1.25,
+      dur: [15, 35], amp: 2,
+      news: { pump: 2, short: 2, flash: 2, opex: 2, headline: 1, earnings: 1 },
+      bag: ["spike", "spike", "wick", "wick", "drop", "run", "chop"],
+      bleed: 0,
+    },
     side: {
       name: "Sideways market", short: "FLAT", buyer: 1, beat: 0.55, gap: 1.5, peakExtra: 0, dipLine: 0.88, stack: 1,
       dur: [20, 100],
@@ -47,15 +55,15 @@ TC.seasons = (() => {
   // Event outcomes can flip the market mood. A good outcome can end a bear (or lift a flat market into a bull),
   // a bad one can end a bull (or sink a flat market into a bear). Chance per outcome type:
   const FLIP = {
-    good: { squeeze: 0.3, beat: 0.2, splitWin: 0.25, index: 0.35, headlineSaved: 0.15 },
-    bad: { shortwin: 0.3, miss: 0.25, splitLose: 0.15, squeezedOut: 0.25, sector: 0.3, flash: 0.12, headlineLost: 0.2 },
+    good: { gamma: 0.3, opexUp: 0.15, squeeze: 0.3, beat: 0.2, splitWin: 0.25, index: 0.35, headlineSaved: 0.15 },
+    bad: { opexDown: 0.15, shortwin: 0.3, miss: 0.25, splitLose: 0.15, squeezedOut: 0.25, sector: 0.3, flash: 0.12, headlineLost: 0.2 },
     minAge: 12,   // a season must have run this long before news can flip it
     delay: 1.6,   // seconds after the outcome, so the result banner reads first
   };
   let enteredAt = 0;
   let pendingFlip = null; // { id, at }
   function outcome(kind) {
-    if (!id || pendingFlip) return;
+    if (!id || pendingFlip || id === "frenzy") return; // a frenzy burns out on its own
     const s = st();
     if (s.clock - enteredAt < FLIP.minAge) return;
     const good = FLIP.good[kind], bad = FLIP.bad[kind];
@@ -80,7 +88,10 @@ TC.seasons = (() => {
 
   const cur = () => SEASONS[id] || SEASONS.side;
 
+  const FRENZY_CHANCE = 0.12; // chance a bull or flat market hands over to a frenzy
   function pickNext() {
+    if ((id === "bull" || id === "side") && Math.random() < FRENZY_CHANCE) return "frenzy";
+    if (id === "frenzy") { const r = Math.random(); return r < 0.5 ? "bear" : r < 0.8 ? "side" : "bull"; }
     if (id === "bull") return Math.random() < 0.75 ? "bear" : "side";
     if (id === "bear") return Math.random() < 0.75 ? "bull" : "side";
     return Math.random() < 0.5 ? "bull" : "bear";
