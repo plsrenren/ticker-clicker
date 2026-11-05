@@ -204,10 +204,10 @@ TC.news = (() => {
       };
     },
 
-    // Pump: rockets up, then gives back half.
+    // Pump and dump: rockets up 40-80%, then gives back 75-125% of the gain (can end below where it started).
     pump() {
       const gain = rand(0.4, 0.8);
-      const giveBack = 0.5;
+      const giveBack = rand(0.75, 1.25);
       let t = 0, phase = 0, start = 0, peak = 0;
       return {
         start() {
@@ -224,7 +224,7 @@ TC.news = (() => {
             if (t >= 2.5) { phase = 1; peak = st().basePrice; banner.sub(L("pumpOut")); }
           } else if (phase === 1) {
             const p = Math.min(1, (t - 2.5) / 4);
-            const target = peak - (peak - start) * giveBack * p;
+            const target = Math.max(start * 0.3, peak - (peak - start) * giveBack * p);
             if (target < st().basePrice) TC.market.shift(target / st().basePrice - 1, "pump");
             if (p >= 1) return t < 7.5;
           }
