@@ -1,0 +1,487 @@
+// Visual effects layer. Draws on its own canvas over the chart.
+//
+// Two kinds of things live here:
+//   - one-shot effects: factories in `kinds` that return { update(dt) -> alive?, draw(ctx) }
+//   - the trade feed: a persistent stack of big trade amounts beside the price
+// Hook new effects to game events in the "wiring" block at the bottom.
+// Effects never change game state.
+window.TC = window.TC || {};
+
+TC.effects = (() => {
+  let canvas, ctx, w = 0, h = 0;
+  const live = [];
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const token = (name) => getComputedStyle(document.documentElement).getPropertyValue("--" + name).trim();
+  let C = {};
+
+  function resize() {
+    const r = canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    w = r.width; h = r.height;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  // ---------- One-shot effects ----------
+  // Tap heat: rises with fast tapping, cools off over ~1.5s. Makes tap effects bigger and hotter.
+  let heat = 0;
+  // Mix the neon green toward the white-hot core as heat rises
+  const heatColor = (k) => (k > 0.66 ? C.core : C.line);
+
+  const kinds = {
+    // Shockwave rings where your finger lands
+    tapRipple({ x, y, k = 0 }) {
+      let t = 0;
+      const life = 0.45 + k * 0.2;
+      const max = 34 + k * 46;
+      const color = heatColor(k);
+      return {
+        update(dt) { t += dt; return t < life; },
+        draw(g) {
+          const p = t / life;
+          const ease = 1 - Math.pow(1 - p, 3);
+          g.save();
+          g.strokeStyle = color;
+          g.shadowColor = C.line;
+          g.shadowBlur = 14;
+          g.globalAlpha = (1 - p) * 0.9;
+          g.lineWidth = 2.5 * (1 - p) + 0.5;
+          g.beginPath(); g.arc(x, y, max * ease, 0, Math.PI * 2); g.stroke();
+          g.globalAlpha = (1 - p) * 0.5;
+          g.beginPath(); g.arc(x, y, max * 0.55 * ease, 0, Math.PI * 2); g.stroke();
+          // bright flash at the contact point
+          g.globalAlpha = Math.max(0, 1 - p * 3);
+          g.fillStyle = C.core;
+          g.beginPath(); g.arc(x, y, 5 + k * 5, 0, Math.PI * 2); g.fill();
+          g.restore();
+        },
+      };
+    },
+
+    // Little glowing "$" and dots thrown out from the tap
+    coin({ x, y, k = 0 }) {
+      let t = 0;
+      const life = 0.55 + Math.random() * 0.35;
+      const a = Math.random() * Math.PI * 2;
+      const sp = 70 + Math.random() * (120 + k * 160);
+      let vx = Math.cos(a) * sp, vy = Math.sin(a) * sp - 60;
+      const glyph = Math.random() < 0.45;
+      const size = glyph ? 11 + Math.random() * 6 + k * 4 : 2 + Math.random() * 2;
+      const color = Math.random() < k * 0.6 ? C.core : C.line;
+      const spin = (Math.random() - 0.5) * 8;
+      return {
+        update(dt) { t += dt; x += vx * dt; y += vy * dt; vy += 340 * dt; vx *= 0.985; return t < life; },
+        draw(g) {
+          const p = t / life;
+          g.save();
+          g.globalAlpha = 1 - p * p;
+          g.fillStyle = color;
+          g.shadowColor = color;
+          g.shadowBlur = 8;
+          if (glyph) {
+            g.translate(x, y);
+            g.rotate(spin * t);
+            g.font = `800 ${size}px "Bricolage Grotesque", system-ui, sans-serif`;
+            g.textAlign = "center";
+            g.textBaseline = "middle";
+            g.fillText("$", 0, 0);
+          } else {
+            g.fillRect(x - size / 2, y - size / 2, size, size);
+          }
+          g.restore();
+        },
+      };
+    },
+
+    // Your order: a comet that flies from your finger into the price, then bursts on arrival
+    comet({ x, y, k = 0, onArrive }) {
+      let t = 0;
+      const life = 0.32;
+      const sx = x, sy = y;
+      const trail = [];
+      // Curve sideways a little so a burst of taps fans out
+      const bend = (Math.random() - 0.5) * 80;
+      let arrived = false;
+      return {
+        update(dt) {
+          t += dt;
+          const tip = TC.chart.tip();
+          const p = Math.min(1, t / life);
+          const e = p * p * (3 - 2 * p);
+          const mx = (sx + tip.x) / 2 + bend, my = (sy + tip.y) / 2 - 40;
+          // quadratic bezier from finger to the live price
+          const cx = (1 - e) * (1 - e) * sx + 2 * (1 - e) * e * mx + e * e * tip.x;
+          const cy = (1 - e) * (1 - e) * sy + 2 * (1 - e) * e * my + e * e * tip.y;
+          trail.push({ x: cx, y: cy });
+          if (trail.length > 10) trail.shift();
+          if (p >= 1 && !arrived) { arrived = true; onArrive && onArrive(tip); }
+          return t < life + 0.12;
+        },
+        draw(g) {
+          if (trail.length < 2) return;
+          const fade = t > life ? 1 - (t - life) / 0.12 : 1;
+          g.save();
+          g.lineCap = "round";
+          g.shadowColor = C.line;
+          g.shadowBlur = 12;
+          for (let i = 1; i < trail.length; i++) {
+            const q = i / trail.length;
+            g.globalAlpha = q * fade;
+            g.strokeStyle = q > 0.7 ? C.core : heatColor(k);
+            g.lineWidth = 1 + q * (2.5 + k * 2);
+            g.beginPath();
+            g.moveTo(trail[i - 1].x, trail[i - 1].y);
+            g.lineTo(trail[i].x, trail[i].y);
+            g.stroke();
+          }
+          g.restore();
+        },
+      };
+    },
+
+    // A band of light that runs along the chart line from "now" back into the past.
+    pulse({ color = C.line, speed = 150, width = 16, life = 1.6, strength = 1 }) {
+      let t = 0;
+      const N = TC.config.historyPoints;
+      return {
+        update(dt) { t += dt; return t < life && N - 1 - t * speed > -width; },
+        draw(g) {
+          const pts = TC.chart.points();
+          if (pts.length < 2) return;
+          const head = pts.length - 1 - t * speed;
+          const fade = Math.max(0, 1 - t / life) * strength;
+          const from = Math.max(0, Math.floor(head - width));
+          const to = Math.min(pts.length - 1, Math.ceil(head + width));
+          g.save();
+          g.lineCap = "round";
+          g.strokeStyle = color;
+          g.shadowColor = color;
+          g.shadowBlur = 20;
+          g.lineWidth = 3.2;
+          for (let i = from; i < to; i++) {
+            const d = Math.abs(i + 0.5 - head) / width;
+            const k = 1 - d * d;
+            if (k <= 0) continue;
+            g.globalAlpha = Math.min(1, fade * k);
+            g.beginPath();
+            g.moveTo(pts[i].x, pts[i].y);
+            g.lineTo(pts[i + 1].x, pts[i + 1].y);
+            g.stroke();
+          }
+          g.restore();
+        },
+      };
+    },
+
+    // Small sparks thrown off the line tip
+    spark({ x, y, color = C.line }) {
+      let t = 0;
+      const life = 0.45 + Math.random() * 0.3;
+      const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.2;
+      const sp = 60 + Math.random() * 110;
+      let vx = Math.cos(a) * sp, vy = Math.sin(a) * sp;
+      return {
+        update(dt) { t += dt; x += vx * dt; y += vy * dt; vy += 260 * dt; return t < life; },
+        draw(g) {
+          g.globalAlpha = 1 - t / life;
+          g.fillStyle = color;
+          g.fillRect(x - 1.25, y - 1.25, 2.5, 2.5);
+          g.globalAlpha = 1;
+        },
+      };
+    },
+
+    // Floating headline text, used for milestones and the IPO
+    floatText({ x, y, text, color = C.up, size = 26, life = 1.6 }) {
+      let t = 0;
+      return {
+        update(dt) { t += dt; return t < life; },
+        draw(g) {
+          const p = t / life;
+          g.globalAlpha = 1 - p * p;
+          g.fillStyle = color;
+          g.shadowColor = color;
+          g.shadowBlur = 16;
+          g.font = `800 ${size}px "Bricolage Grotesque", system-ui, sans-serif`;
+          g.textAlign = "center";
+          g.fillText(text, x, y - 40 * p);
+          g.shadowBlur = 0;
+          g.globalAlpha = 1;
+        },
+      };
+    },
+
+    // Colored glow around the edges of the chart, for news hits
+    vignette({ color = C.down, life = 0.9, strength = 0.7 }) {
+      let t = 0;
+      return {
+        update(dt) { t += dt; return t < life; },
+        draw(g) {
+          const a = strength * (1 - t / life);
+          const r = Math.max(w, h) * 0.75;
+          const grad = g.createRadialGradient(w / 2, h / 2, r * 0.45, w / 2, h / 2, r);
+          grad.addColorStop(0, color + "00");
+          grad.addColorStop(1, color);
+          g.globalAlpha = a;
+          g.fillStyle = grad;
+          g.fillRect(0, 0, w, h);
+          g.globalAlpha = 1;
+        },
+      };
+    },
+
+    // Expanding ring
+    ring({ x, y, color = C.line, life = 0.8, max = 120 }) {
+      let t = 0;
+      return {
+        update(dt) { t += dt; return t < life; },
+        draw(g) {
+          const p = t / life;
+          g.globalAlpha = 1 - p;
+          g.strokeStyle = color;
+          g.shadowColor = color;
+          g.shadowBlur = 12;
+          g.lineWidth = 2;
+          g.beginPath(); g.arc(x, y, max * p, 0, Math.PI * 2); g.stroke();
+          g.shadowBlur = 0;
+          g.globalAlpha = 1;
+        },
+      };
+    },
+  };
+
+  // ---------- Trade feed ----------
+  // Newest trade sits big and glowing level with the price; older ones slide down,
+  // shrink and fade. Rapid trades in the same direction merge into one growing number.
+  const feed = {
+    items: [],
+    add(amount, sign, src = "you") {
+      const top = feed.items[0];
+      if (top && src === "you" && top.sign === sign && top.src === src && top.age < 0.18) {
+        top.amount += amount;
+        top.age = 0;
+        top.pop = 1;
+        return;
+      }
+      feed.items.unshift({ amount, sign, src, age: 0, pop: 1, y: null });
+      if (feed.items.length > 5) feed.items.length = 5;
+    },
+    update(dt) {
+      for (const it of feed.items) { it.age += dt; it.pop = Math.max(0, it.pop - dt * 5); }
+      feed.items = feed.items.filter((it) => it.age < 4);
+    },
+    draw(g) {
+      if (!feed.items.length) return;
+      const b = TC.chart.bounds();
+      const scale = Math.min(1.5, Math.max(0.8, w / 420));
+      const ref = Math.max(TC.market.perClick(), 0.01);
+      const anchor = Math.max(b.t + 40, Math.min(b.b - 60, TC.chart.tip().y + 12));
+      let y = anchor;
+      g.textAlign = "right";
+      g.textBaseline = "alphabetic";
+      feed.items.forEach((it, i) => {
+        // Bigger trades print bigger
+        const mag = Math.min(1, Math.log10(it.amount / ref + 1) / 2);
+        const base = (i === 0 ? 30 + mag * 18 : 22 - i * 2) * scale;
+        const size = base * (1 + it.pop * 0.18);
+        it.y = it.y === null ? y : it.y + (y - it.y) * 0.25;
+        const fadeAge = it.age > 2.5 ? 1 - (it.age - 2.5) / 1.5 : 1;
+        const alpha = Math.max(0, (i === 0 ? 1 : 0.55 - i * 0.08) * fadeAge);
+        const color = it.sign > 0 ? C.up : C.down;
+        g.globalAlpha = alpha;
+        g.fillStyle = color;
+        g.shadowColor = color;
+        g.shadowBlur = i === 0 ? 18 + it.pop * 14 : 0;
+        g.font = `800 ${size}px "Bricolage Grotesque", system-ui, sans-serif`;
+        g.fillText((it.sign > 0 ? "$" : "-$") + TC.format.money(it.amount).slice(1), b.r - 14, it.y);
+        y += size * 0.95;
+      });
+      g.shadowBlur = 0;
+      g.globalAlpha = 1;
+    },
+    clear() { feed.items = []; },
+  };
+
+  // Screen shake: jolts the chart container, decays quickly.
+  let shakeT = 0, shakeMag = 0, wrapEl = null;
+  function shake(mag, time = 0.35) {
+    if (reduced) return;
+    shakeMag = Math.max(shakeMag, mag);
+    shakeT = Math.max(shakeT, time);
+  }
+  function updateShake(dt) {
+    if (!wrapEl) return;
+    if (shakeT <= 0) { if (wrapEl.style.transform) wrapEl.style.transform = ""; shakeMag = 0; return; }
+    shakeT -= dt;
+    const m = shakeMag * Math.max(0, shakeT / 0.35);
+    wrapEl.style.transform = `translate(${(Math.random() - 0.5) * 2 * m}px, ${(Math.random() - 0.5) * 2 * m}px)`;
+  }
+
+  const api = {
+    kinds,
+    feed,
+    shake,
+    init(el) {
+      canvas = el;
+      ctx = canvas.getContext("2d");
+      C = { up: token("up"), line: token("line"), down: token("down"), core: token("core") };
+      wrapEl = canvas.parentElement;
+      resize();
+      window.addEventListener("resize", resize);
+      wire();
+    },
+    spawn(kind, opts, cap = 400) {
+      if (reduced && kind !== "floatText") return;
+      if (kind === "pulse" && TC.chart.mode() === "candles") return; // pulses ride the line
+
+      if (live.filter((e) => e.kind === kind).length >= cap) return;
+      const e = kinds[kind](opts);
+      e.kind = kind;
+      live.push(e);
+    },
+    update(dt) {
+      heat = Math.max(0, heat - dt * 0.7);
+      for (let i = live.length - 1; i >= 0; i--) if (!live[i].update(dt)) live.splice(i, 1);
+      feed.update(dt);
+      updateShake(dt);
+    },
+    draw() {
+      ctx.clearRect(0, 0, w, h);
+      for (const e of live) e.draw(ctx);
+      feed.draw(ctx);
+    },
+    clear() { live.length = 0; feed.clear(); },
+  };
+
+  // ---------- Wiring: which events trigger which effects ----------
+  function wire() {
+    TC.events.on("buy", ({ amount, x, y }) => {
+      heat = Math.min(1, heat + 0.09);
+      const k = heat;
+      // Keyboard or button buys start from the bottom middle of the chart
+      const fx = x ?? w * 0.45;
+      const fy = y ?? h - 40;
+      feed.add(amount, +1);
+      TC.chart.flash("up");
+
+      // At your finger
+      api.spawn("tapRipple", { x: fx, y: fy, k }, 24);
+      const n = 5 + Math.round(k * 9);
+      for (let i = 0; i < n; i++) api.spawn("coin", { x: fx, y: fy, k }, 220);
+
+      // Your order flies into the price, then the line lights up
+      api.spawn("comet", {
+        x: fx, y: fy, k,
+        onArrive: (tip) => {
+          for (let i = 0; i < 4 + Math.round(k * 6); i++) api.spawn("spark", { x: tip.x, y: tip.y, color: k > 0.66 ? C.core : C.line }, 160);
+          api.spawn("pulse", { color: k > 0.66 ? C.core : C.line, strength: 1 + k * 0.6 }, 8);
+        },
+      }, 30);
+      if (k > 0.85) shake(1.5, 0.12); // only a hum when you're really hammering it
+    });
+
+    TC.events.on("sell", ({ amount, cash, manual, bonus = 1 }) => {
+      feed.add(amount, -1);
+      TC.chart.flash("down");
+      if (!manual) {
+        api.spawn("pulse", { color: C.down, speed: 110, width: 22, strength: 1 }, 8);
+        return;
+      }
+      // You dumped shares: a heavy red wave, a jolt, and the cash you took
+      const tip = TC.chart.tip();
+      api.spawn("pulse", { color: C.down, speed: 200, width: 45, life: 1.6, strength: 1.8 });
+      api.spawn("pulse", { color: C.down, speed: 120, width: 25, life: 2, strength: 1.2 });
+      api.spawn("ring", { x: tip.x, y: tip.y, color: C.down, max: 140, life: 0.7 });
+      for (let i = 0; i < 14; i++) api.spawn("spark", { x: tip.x, y: tip.y, color: C.down });
+      api.spawn("floatText", { x: w / 2 - 30, y: h * 0.3, text: "SOLD +" + TC.format.money(cash), color: C.down, size: 30, life: 1.6 });
+      if (bonus > 1) {
+        api.spawn("floatText", { x: w / 2 - 30, y: h * 0.3 - 40, text: "PEAK SELL " + bonus + "x", color: C.core, size: 34, life: 1.8 });
+        api.spawn("ring", { x: tip.x, y: tip.y, color: C.core, max: 200, life: 0.9 });
+        api.spawn("vignette", { color: C.core, life: 0.8, strength: 0.5 }, 2);
+      }
+      shake(7);
+    });
+
+    // A buyer filled an order: its own line in the feed and a soft pulse, no finger effects
+    TC.events.on("order", ({ amount }) => {
+      feed.add(amount, +1, "buyer");
+      api.spawn("pulse", { color: C.line, speed: 130, width: 12, strength: 0.7 }, 8);
+      const tip = TC.chart.tip();
+      for (let i = 0; i < 2; i++) api.spawn("spark", { x: tip.x, y: tip.y }, 120);
+    });
+
+    TC.events.on("hype", ({ title, tone }) => {
+      if (!title) return;
+      const color = tone === "down" ? C.down : C.up;
+      api.spawn("floatText", { x: w / 2 - 30, y: h * 0.55, text: title, color, size: 26, life: 1.6 });
+      api.spawn("vignette", { color, life: 0.8, strength: 0.6 }, 2);
+      api.spawn("pulse", { color: tone === "down" ? C.down : C.core, speed: 240, width: 36, life: 1.2, strength: 1.4 });
+      shake(tone === "down" ? 5 : 3, 0.3);
+    });
+
+    TC.events.on("season", ({ id, name }) => {
+      const color = id === "bull" ? C.up : id === "bear" ? C.down : C.core;
+      api.spawn("floatText", { x: w / 2 - 30, y: h * 0.45, text: name.toUpperCase(), color, size: 32, life: 2.2 });
+      api.spawn("vignette", { color, life: 1.4, strength: 0.8 }, 2);
+      api.spawn("pulse", { color, speed: 200, width: 50, life: 1.6, strength: 1.6 });
+      shake(id === "bear" ? 6 : 4, 0.4);
+    });
+    TC.events.on("seasonWarn", ({ next, name }) => {
+      const color = next === "bull" ? C.up : next === "bear" ? C.down : C.core;
+      api.spawn("floatText", { x: w / 2 - 30, y: h * 0.45, text: name.toUpperCase() + " IN 15s", color, size: 20, life: 1.8 });
+    });
+
+    TC.events.on("stackBuy", () => {
+      api.spawn("floatText", { x: w / 2 - 30, y: h * 0.32, text: "BOUGHT THE DIP", color: C.up, size: 32, life: 1.5 });
+      api.spawn("vignette", { color: C.up, life: 0.7, strength: 0.5 }, 2);
+      shake(3, 0.25);
+    });
+
+    TC.events.on("rally", ({ amount }) => {
+      feed.add(amount, +1);
+      api.spawn("pulse", { color: C.line, speed: 170, width: 20 }, 6);
+      TC.chart.flash("up");
+    });
+
+    TC.events.on("news", ({ tone, big }) => {
+      const color = tone === "up" ? C.up : tone === "down" ? C.down : C.core;
+      api.spawn("vignette", { color, life: big ? 1.1 : 0.8, strength: big ? 0.9 : 0.55 }, 2);
+      if (big) shake(tone === "down" ? 9 : 6, 0.45);
+    });
+
+    TC.events.on("milestone", ({ price }) => {
+      const tip = TC.chart.tip();
+      api.spawn("ring", { x: tip.x, y: tip.y, max: 160 });
+      api.spawn("pulse", { color: C.core, speed: 260, width: 40, life: 1.2, strength: 1.4 });
+      api.spawn("floatText", { x: w / 2 - 30, y: h * 0.22, text: TC.format.axis(price) + " CROSSED", color: C.up });
+      shake(4, 0.3);
+    });
+
+    TC.events.on("ipo", ({ symbol }) => {
+      const tip = TC.chart.tip();
+      api.spawn("ring", { x: tip.x, y: tip.y, max: 200, life: 1.1 });
+      api.spawn("floatText", { x: w / 2 - 30, y: h * 0.4, text: "$" + symbol + " IS LIVE", color: C.up, size: 30, life: 1.8 });
+    });
+
+    TC.events.on("private", ({ points }) => {
+      api.spawn("vignette", { color: C.core, life: 1.4, strength: 1 });
+      api.spawn("floatText", { x: w / 2 - 30, y: h * 0.4, text: "+" + points + " FOUNDER POINTS", color: C.core, size: 28, life: 2 });
+      shake(10, 0.5);
+    });
+
+    TC.events.on("achievement", () => {
+      const tip = TC.chart.tip();
+      api.spawn("ring", { x: tip.x, y: tip.y, color: C.core, max: 90, life: 0.7 });
+    });
+
+    TC.events.on("offline", () => {
+      api.spawn("pulse", { color: C.line, speed: 260, width: 50, life: 1.4, strength: 1.5 });
+      api.spawn("vignette", { color: C.up, life: 1, strength: 0.6 });
+    });
+
+    TC.events.on("reset", () => api.clear());
+  }
+
+  return api;
+})();

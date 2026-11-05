@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ticker Clicker</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#030605">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="app" id="app">
+  <div class="rivals" aria-label="Market ticker"><div class="rivals-track" id="rivalsTrack"></div></div>
+  <header class="tape">
+    <div class="tape-top">
+      <div class="symbol-line"><span class="symbol" id="symbol">$YOU</span><span class="share-price" id="sharePrice">$0.00</span></div>
+      <div id="change" class="change flat">+0.00 (0.00%)</div>
+    </div>
+    <div class="cap-row"><span class="cap-label">Market cap</span><span class="season-chip" id="season" hidden></span></div>
+    <div id="price" class="price">$0.00</div>
+    <dl class="stats">
+      <div><dt>Cash</dt><dd id="cash">$0.00</dd></div>
+      <div><dt>Earning</dt><dd id="income">$0.00/s</dd></div>
+      <div><dt>Per tap</dt><dd id="perClick">+$1.00</dd></div>
+      <div><dt>Buyers</dt><dd id="perSec">+$0.00/s</dd></div>
+    </dl>
+  </header>
+
+  <section class="chart-wrap" id="chartWrap" aria-label="Price chart. Tap to buy.">
+    <canvas id="chart"></canvas>
+    <canvas id="fx"></canvas>
+    <div class="chart-hint" id="hint">Tap anywhere to buy</div>
+    <button class="sound-btn" id="soundBtn" type="button" aria-pressed="true" aria-label="Mute sound">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="cross" d="M16 9l6 6M22 9l-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <div class="mode-toggle" id="modeToggle" role="group" aria-label="Chart style">
+      <button type="button" data-mode="line" aria-pressed="true">Line</button>
+      <button type="button" data-mode="candles" aria-pressed="false">Candles</button>
+    </div>
+    <button class="dip-btn" id="dipBtn" type="button" hidden>
+      <span class="dip-word">BUY THE DIP</span>
+      <span class="dip-sub" id="dipSub">Stack 12 orders</span>
+    </button>
+    <div class="news" id="news" hidden data-tone="down" role="status" aria-live="polite">
+      <div class="news-head"><span class="news-tag" id="newsTag">BREAKING</span><span class="news-sub" id="newsSub"></span></div>
+      <div class="news-text" id="newsText"></div>
+      <div class="news-meter" id="newsMeter" hidden><span class="news-red" id="newsRed"></span><span class="news-green" id="newsGreen"></span></div>
+    </div>
+  </section>
+
+  <nav class="dock">
+    <div class="hype-bar" id="hypeBar" role="group" aria-label="Hype moves"></div>
+    <button id="sell" class="sell-btn" type="button" disabled>
+      <span class="sell-word">SELL</span>
+      <span class="sell-sub" id="sellSub">Reach $5 to sell</span>
+    </button>
+    <button id="openDesk" class="desk-btn" type="button" aria-controls="desk" aria-expanded="false">
+      Trading desk <span class="badge" id="badge" hidden>0</span>
+    </button>
+  </nav>
+
+  <div class="scrim" id="scrim" hidden></div>
+  <aside class="desk" id="desk" aria-label="Trading desk">
+    <div class="desk-handle" id="deskHandle"><span></span></div>
+    <div class="desk-scroll">
+      <section class="private-card" id="privateCard">
+        <div class="private-head"><h2 class="desk-title">Go private</h2><span class="private-pts" id="privatePts">0 founder points</span></div>
+        <p class="desk-note" id="privateText">Reach $1M to go private.</p>
+        <button class="private-btn" id="goPrivate" type="button" disabled>Go private</button>
+      </section>
+      <p class="desk-note" id="holdings">You hold 100 shares. They pay dividends from your price every second, so a higher price means more cash.</p>
+      <h2 class="desk-title">Buyers</h2>
+      <p class="desk-note">They buy your stock every second, so the price keeps climbing.</p>
+      <ul id="generators" class="list"></ul>
+      <h2 class="desk-title">Upgrades</h2>
+      <ul id="upgrades" class="list"></ul>
+      <div class="ach-head"><h2 class="desk-title">Achievements</h2><span class="ach-count" id="achCount">0/20</span></div>
+      <ul class="ach-grid" id="achGrid"></ul>
+      <div class="desk-foot">
+        <span class="orders" id="orders">0 orders filled</span>
+        <button id="reset" class="reset" type="button">Delist and wipe everything</button>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<div class="toast" id="toast" hidden role="status" aria-live="polite">
+  <span class="toast-tag">Achievement</span>
+  <span class="toast-name" id="toastName"></span>
+  <span class="toast-desc" id="toastDesc"></span>
+</div>
+
+<div class="ipo offline" id="offline" hidden>
+  <div class="ipo-card">
+    <p class="ipo-eyebrow">While you were away · <span id="offTime">0m</span></p>
+    <h1 class="ipo-title">The market stayed open</h1>
+    <dl class="off-rows">
+      <div><dt>Buyers pushed <span id="offSym">$YOU</span></dt><dd id="offPrice" class="up">+$0.00</dd></div>
+      <div><dt>Cash from new highs</dt><dd id="offCash" class="up">+$0.00</dd></div>
+    </dl>
+    <p class="ipo-sub">Buyers run at half speed while you're gone, for up to 8 hours. You only earn for the part above your record.</p>
+    <button class="ipo-go" id="offGo" type="button">Collect</button>
+  </div>
+</div>
+
+<div class="ipo" id="ipo" hidden>
+  <form class="ipo-card" id="ipoForm" autocomplete="off">
+    <p class="ipo-eyebrow">Initial public offering</p>
+    <h1 class="ipo-title">Name your ticker</h1>
+    <p class="ipo-sub">Up to 5 letters. This is you on the board from now on.</p>
+    <label class="ipo-field" for="ipoInput">
+      <span class="ipo-dollar">$</span>
+      <input id="ipoInput" class="ipo-input" maxlength="5" spellcheck="false" autocapitalize="characters" inputmode="text" placeholder="YOU" aria-label="Ticker symbol">
+    </label>
+    <div class="ipo-chips" id="ipoChips"></div>
+    <button class="ipo-go" id="ipoGo" type="submit" disabled>Go public at $0.00</button>
+  </form>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/events.js"></script>
+<script src="js/format.js"></script>
+<script src="js/state.js"></script>
+<script src="js/market.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/effects.js"></script>
+<script src="js/news.js"></script>
+<script src="js/trade.js"></script>
+<script src="js/moves.js"></script>
+<script src="js/seasons.js"></script>
+<script src="js/hype.js"></script>
+<script src="js/sound.js"></script>
+<script src="js/prestige.js"></script>
+<script src="js/offline.js"></script>
+<script src="js/achievements.js"></script>
+<script src="js/rivals.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/ipo.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

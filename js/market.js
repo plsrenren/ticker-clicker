@@ -1,0 +1,213 @@
+// Game rules: what things cost, how price moves, how price turns into cash.
+//
+// The economy loop:
+//   taps + buyers  -> push the PRICE up
+//   NEW HIGHS      -> every $1 the price climbs above its record pays cashPerDollar -> CASH
+//                     (dips and recoveries pay nothing until the record is broken again)
+//   CASH           -> buys buyers and upgrades, which push the price up faster
+//   SELL           -> instant cash, but the price drops 15% below your record and there's a cooldown
+window.TC = window.TC || {};
+
+TC.market = (() => {
+  const cfg = TC.config;
+  const st = () => TC.state.data;
+  let wobble = 0;      // mean-reverting noise so the line breathes between buys
+  let dipTimer = 2;    // seconds until profit-takers nudge the price (cosmetic red dip)
+  let earnedAcc = 0;   // cash earned since the last step, for the smoothed rate
+  // Buyers fill orders one at a time instead of all at once. Each buyer type saves up its
+  // share of the price and fills it as a single order on its own staggered timer.
+  const orderBook = {}; // id -> { pending, timer }
+  const MIN_ORDER_GAP = 0.3; // seconds between any two buyer orders
+  let lastOrderAt = -1;
+  function orderGap(n) {
+    // More of a buyer means it trades more often (but each order stays readable)
+    const base = Math.max(0.6, 2.6 / Math.sqrt(n));
+    return base * (0.55 + Math.random() * 0.9);
+  }
+  let earnRate = 0;    // smoothed cash per second, for the UI
+
+  function upgradeProduct(kind) {
+    return cfg.upgrades.reduce((m, u) => (st().upgrades[u.id] && u.kind === kind ? m * u.value : m), 1);
+  }
+
+  const api = {
+    generatorCost(g) {
+      return Math.ceil(g.cost * Math.pow(cfg.costGrowth, st().owned[g.id] || 0));
+    },
+
+    // Permanent multiplier from founder points and achievements, applied to taps, buyers and dividends.
+    metaMult() {
+      const s = st();
+      return (1 + cfg.prestige.perPoint * s.prestige.points) *
+        (1 + cfg.achievementBonus * Object.keys(s.achievements).length);
+    },
+
+    // Multiplier on every buyer from upgrades.
+    genMult: () => upgradeProduct("gen"),
+
+    // Price added per second by all buyers.
+    perSecond() {
+      const raw = cfg.generators.reduce((sum, g) => sum + g.rate * (st().owned[g.id] || 0) * (TC.seasons ? TC.seasons.genMult(g.id) : 1), 0);
+      return raw * upgradeProduct("gen") * api.metaMult() * (TC.hype ? TC.hype.buyerMult() : 1) * (TC.seasons ? TC.seasons.buyerMult() : 1);
+    },
+
+    // Price added per tap.
+    perClick() {
+      const pct = cfg.upgrades.reduce((p, u) => (st().upgrades[u.id] && u.kind === "cpsPct" ? p + u.value : p), 0);
+      return cfg.baseClick * upgradeProduct("mult") * api.metaMult() * (TC.hype ? TC.hype.tapMult() : 1) + api.perSecond() * pct;
+    },
+
+    // Cash paid per $1 the price climbs above its record.
+    cashPerDollar() {
+      return cfg.cashPerDollar * upgradeProduct("yield");
+    },
+
+    // Smoothed cash earned per second (0 while the price is below its record).
+    income: () => earnRate,
+
+    // Headline number: share price x shares outstanding.
+    marketCap: (price) => (price ?? api.quote()) * cfg.sharesOutstanding,
+
+    // Cash a sell would pay right now, and the price after it.
+    sellValue() {
+      return st().shares * st().basePrice * cfg.sell.payout * api.sellBonus();
+    },
+    // Peak-sell multiplier during market events (see trade.js)
+    sellBonus: () => (TC.trade ? TC.trade.peakBonus() : 1),
+    sellCooldown() { return Math.max(0, st().sellReadyAt - st().clock); },
+    canSell() { return st().listed && st().basePrice >= cfg.sell.minPrice && api.sellCooldown() === 0; },
+
+    // Apply buying pressure to the price.
+    push(amount) {
+      const s = st();
+      const before = s.basePrice;
+      const record = s.bestPrice;
+      s.basePrice += amount;
+      if (s.basePrice > record) {
+        // New high: you get paid for the part above the old record
+        const earned = (s.basePrice - record) * api.cashPerDollar();
+        s.cash += earned;
+        earnedAcc += earned;
+        s.bestPrice = s.basePrice;
+      }
+      if (s.basePrice > s.lifetime.bestPrice) s.lifetime.bestPrice = s.basePrice;
+      // Milestones the first time the price crosses each power of ten ($10, $100, $1K ...)
+      const pow = Math.floor(Math.log10(s.basePrice));
+      if (before > 0 && pow > Math.floor(Math.log10(before)) && Math.pow(10, pow) > s.bestMilestone) {
+        s.bestMilestone = Math.pow(10, pow);
+        TC.events.emit("milestone", { price: s.bestMilestone });
+      }
+    },
+
+    buy(x = null, y = null) {
+      if (!st().listed) return;
+      const amount = api.perClick();
+      api.push(amount);
+      st().orders++;
+      st().lifetime.taps++;
+      wobble = Math.abs(wobble) * 0.5; // a buy kicks noise upward
+      TC.events.emit("buy", { amount, x, y, manual: true });
+    },
+
+    // Secondary offering: cash now, price drops by cfg.sell.drop.
+    sell() {
+      if (!api.canSell()) return false;
+      const s = st();
+      const bonus = api.sellBonus();
+      const cash = api.sellValue();
+      const before = api.quote();
+      s.cash += cash;
+      s.basePrice *= 1 - cfg.sell.drop;
+      s.sells++;
+      s.lifetime.sells++;
+      s.sellReadyAt = s.clock + cfg.sell.cooldown;
+      wobble = -cfg.wobble;
+      dipTimer = 4; // let your own sell own the moment
+      TC.events.emit("sell", { amount: before - api.quote(), cash, manual: true, bonus, atTop: before >= s.bestPrice * 0.95 });
+      return true;
+    },
+
+    // Move the real price by a fraction (+0.2 = up 20%). Used by market events.
+    shift(frac, source) {
+      const s = st();
+      if (!frac || s.basePrice <= 0) return;
+      const before = api.quote();
+      if (frac > 0) api.push(s.basePrice * frac);
+      else s.basePrice *= 1 + Math.max(frac, -0.95);
+      const amount = Math.abs(api.quote() - before);
+      TC.events.emit(frac > 0 ? "rally" : "sell", { amount, manual: false, source });
+    },
+
+    buyGenerator(id) {
+      const g = cfg.generators.find((x) => x.id === id);
+      const cost = api.generatorCost(g);
+      if (st().cash < cost) return false;
+      st().cash -= cost;
+      st().owned[id] = (st().owned[id] || 0) + 1;
+      TC.events.emit("purchase", { kind: "generator", id, cost });
+      return true;
+    },
+
+    buyUpgrade(id) {
+      const u = cfg.upgrades.find((x) => x.id === id);
+      if (st().upgrades[id] || st().cash < u.cost) return false;
+      st().cash -= u.cost;
+      st().upgrades[id] = true;
+      TC.events.emit("purchase", { kind: "upgrade", id, cost: u.cost });
+      return true;
+    },
+
+    // Advance the market by dt seconds.
+    step(dt) {
+      const s = st();
+      if (!s.listed) return;
+      s.clock += dt;
+
+      const m = upgradeProduct("gen") * api.metaMult() * (TC.hype ? TC.hype.buyerMult() : 1) * (TC.seasons ? TC.seasons.buyerMult() : 1);
+      for (const g of cfg.generators) {
+        const n = s.owned[g.id] || 0;
+        let o = orderBook[g.id];
+        if (!n) { if (o) o.pending = 0; continue; }
+        if (!o) o = orderBook[g.id] = { pending: 0, timer: Math.random() * orderGap(n) };
+        o.pending += g.rate * n * m * (TC.seasons ? TC.seasons.genMult(g.id) : 1) * dt;
+        o.timer -= dt;
+        if (o.timer <= 0) {
+          // Keep orders from different buyers apart so each one reads on its own
+          const since = s.clock - lastOrderAt;
+          if (since >= 0 && since < MIN_ORDER_GAP) { o.timer = MIN_ORDER_GAP - since + Math.random() * 0.15; continue; }
+          lastOrderAt = s.clock;
+          o.timer = orderGap(n);
+          const amount = o.pending;
+          o.pending = 0;
+          api.push(amount);
+          TC.events.emit("order", { amount, id: g.id, name: g.name });
+        }
+      }
+      if (dt > 0) {
+        const k = Math.min(1, dt / 1.5);
+        earnRate += (earnedAcc / dt - earnRate) * k;
+        earnedAcc = 0;
+      }
+
+      wobble += (Math.random() - 0.5) * cfg.wobble * 0.6 * Math.min(dt * 10, 1);
+      wobble *= 0.97;
+      wobble = Math.max(-cfg.wobble, Math.min(cfg.wobble, wobble));
+
+      // Profit-takers: a short red dip now and then. Moves the shown quote only.
+      dipTimer -= dt;
+      if (dipTimer <= 0 && s.basePrice > 3 && !(TC.news && TC.news.active())) {
+        dipTimer = 2 + Math.random() * 4;
+        const before = api.quote();
+        wobble = -cfg.wobble * (0.6 + Math.random() * 0.4);
+        const amount = before - api.quote();
+        if (amount > 0) TC.events.emit("sell", { amount, manual: false });
+      }
+    },
+
+    // The price shown on the tape and chart: true price plus noise.
+    quote() {
+      return st().basePrice * (1 + wobble);
+    },
+  };
+  return api;
+})();
