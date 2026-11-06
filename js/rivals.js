@@ -26,7 +26,8 @@ TC.rivals = (() => {
   let link = null;       // { r, until, last } rival that follows your price (partnership)
   const find = (sym) => rivals.find((r) => r.sym === sym);
 
-  // Real players who went private join the tape as PRIVATE entries at the cap they reached.
+  // Real players who went private join the tape at the cap they reached. They look like any active
+  // ticker: a made-up % move wanders for flavor, but their cap never changes.
   // Read from the leaderboard API (api/leaderboard.js): the speed board lists players who went private,
   // the cap board gives their best cap. Off the real site (file://, the Artifact) or before that API
   // is deployed, the fetch fails quietly and the tape is just the made-up rivals.
@@ -46,7 +47,8 @@ TC.rivals = (() => {
         if (!row.sym || seen.has(row.sym) || next.length >= MAX_PRIVATE) continue;
         seen.add(row.sym);
         const cap = Math.max(1e12, capBySym[row.sym] || 1e12);
-        next.push({ sym: row.sym, price: cap, open: cap, shares: 1, private: true });
+        const old = privates.find((p) => p.sym === row.sym);
+        next.push({ sym: row.sym, price: cap, open: cap, shares: 1, private: true, fake: old ? old.fake : rand(-0.02, 0.02) });
       }
       privates = next;
       order = "";
@@ -71,7 +73,7 @@ TC.rivals = (() => {
     for (let copy = 0; copy < 2; copy++) {
       list.forEach((x, i) => {
         const el = document.createElement("span");
-        el.className = "rv" + (x.you ? " rv-you" : x.r.private ? " rv-private" : "");
+        el.className = "rv" + (x.you ? " rv-you" : "");
         track.appendChild(el);
         cells.push(x.you ? { el, you: true, rank: i + 1 } : { el, r: x.r, rank: i + 1 });
       });
@@ -100,12 +102,12 @@ TC.rivals = (() => {
         sym = s.symbol; cap = TC.market.marketCap(TC.market.quote());
         ch = s.dayOpen > 0 ? TC.market.quote() / s.dayOpen - 1 : cap > 0 ? 1 : 0;
       } else {
-        sym = c.r.sym; cap = capOf(c.r); ch = c.r.price / c.r.open - 1;
+        sym = c.r.sym; cap = capOf(c.r); ch = c.r.private ? c.r.fake : c.r.price / c.r.open - 1;
       }
       const dir = ch > 0.0005 ? "up" : ch < -0.0005 ? "down" : "flat";
       c.el.dataset.dir = dir;
       c.el.classList.toggle("rv-hot", !c.you && hot[c.r.sym] > 0);
-      const move = c.you && s.dayOpen <= 0 ? "NEW" : !c.you && c.r.private ? "PRIVATE" : `${dir === "down" ? "▼" : "▲"}${Math.abs(ch * 100).toFixed(1)}%`;
+      const move = c.you && s.dayOpen <= 0 ? "NEW" : `${dir === "down" ? "▼" : "▲"}${Math.abs(ch * 100).toFixed(1)}%`;
       c.el.textContent = `#${c.rank} $${sym} ${TC.format.axis(cap)} ${move}`;
     }
   }
@@ -165,6 +167,7 @@ TC.rivals = (() => {
         r.price *= 1 + rand(-0.008, 0.0085) + lean;
         if (!season || season === "side") r.price += (r.open - r.price) * 0.01; // slow pull back toward the open
       }
+      for (const p of privates) p.fake = Math.max(-0.08, Math.min(0.08, p.fake * 0.97 + rand(-0.006, 0.006))); // display only
       paint();
     },
   };
