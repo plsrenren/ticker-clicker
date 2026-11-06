@@ -50,7 +50,7 @@ TC.news = (() => {
   function pickRival() {
     const w = RIVAL_W[(TC.seasons && TC.seasons.current()) || "side"] || RIVAL_W.side;
     const names = Object.keys(w);
-    let r = Math.random() * names.reduce((s, n) => s + w[n], 0);
+    let r = TC.rng.r("newsPick") * names.reduce((s, n) => s + w[n], 0);
     for (const n of names) { r -= w[n]; if (r <= 0) return n; }
     return names[0];
   }
@@ -422,7 +422,7 @@ TC.news = (() => {
     // Earnings: countdown, then a gap up or down.
     earnings(opts = {}) {
       const T = 5;
-      const beat = Math.random() < (opts.beatOdds ?? (TC.seasons ? TC.seasons.beatOdds() : 0.55));
+      const beat = TC.rng.r("outcome") < (opts.beatOdds ?? (TC.seasons ? TC.seasons.beatOdds() : 0.55));
       const move = beat ? mag(0.15, 0.3) : -mag(0.1, 0.25);
       let t = 0, done = false, earnLine = "";
       return {
@@ -696,7 +696,8 @@ TC.news = (() => {
   let lastOutcome = null, chainDepth = 0, chain = null; // chain = { name, at }
 
   function schedule() {
-    nextAt = st().clock + rand(cfg.news.minGap, cfg.news.maxGap) * (TC.seasons ? TC.seasons.gapMult() : 1);
+    const g = TC.rng.r("newsGap");
+    nextAt = st().clock + (cfg.news.minGap + g * (cfg.news.maxGap - cfg.news.minGap)) * (TC.seasons ? TC.seasons.gapMult() : 1);
   }
 
   const api = {
@@ -714,8 +715,9 @@ TC.news = (() => {
     trigger(name, opts) {
       if (active) return false;
       // 40% of random events involve a rival ticker
-      if (!name && TC.market.px(st().basePrice) >= 1000 && Math.random() < cfg.news.splitChance) name = "split";
-      if (!name) name = Math.random() < 0.4 ? pickRival() : (TC.seasons ? TC.seasons.pickNews(CLASSIC) : pick(CLASSIC));
+      // Picks use the shared "newsPick" stream: in a race everyone draws the same events in the same order
+      if (!name && TC.market.px(st().basePrice) >= 1000 && TC.rng.r("newsPick") < cfg.news.splitChance) name = "split";
+      if (!name) name = TC.rng.r("newsPick") < 0.4 ? pickRival() : (TC.seasons ? TC.seasons.pickNews(CLASSIC) : CLASSIC[Math.floor(TC.rng.r("newsPick") * CLASSIC.length)]);
       const make = types[name];
       active = make(opts);
       active.type = name;

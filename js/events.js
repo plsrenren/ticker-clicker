@@ -7,7 +7,7 @@
 //   "rally"     { amount, source }         price pushed up by a market event
 //   "news"      { type, tone, big }        a market event started or resolved (tone: up/down/neutral)
 //   "newsEnd"   { type, saved }            a market event finished
-//   "private"   { points, total }          went private (main.js starts a new run)
+//   "private"   { points, total, symbol, best, secs }  went private (main.js starts a new run)
 //   "offline"   { secs, dPrice, dCash }    collected offline earnings
 //   "achievement" { id, name }
 //   "purchase"  { kind, id, cost }         bought a generator or upgrade

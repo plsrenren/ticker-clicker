@@ -8,6 +8,8 @@
 //   TC.chart.zoomY(f)    scale the price axis around the current price (f < 1 zooms in); settings.yZoom
 //   TC.chart.resetY()    back to the automatic price axis
 //   TC.chart.setRange(r) "live" (follows the price, zoomable) or "all" (the whole run since the IPO)
+// Race mode (js/race.js): the live view also draws every rival's line, on a log price axis labelled in
+// market cap so stocks far apart still fit on one chart.
 window.TC = window.TC || {};
 
 TC.chart = (() => {
@@ -61,7 +63,16 @@ TC.chart = (() => {
 
   const plotW = () => w - pad.l - pad.r;
   const plotH = () => h - pad.t - pad.b;
-  const yOf = (v) => pad.t + plotH() * (1 - (v - yMin) / Math.max(1e-9, yMax - yMin));
+  // Race: a log axis in the live view
+  let logY = false;
+  const LOG_FLOOR = 0.01;
+  const ln = (v) => Math.log(Math.max(LOG_FLOOR, v));
+  const yOf = (v) => logY
+    ? pad.t + plotH() * (1 - (ln(v) - ln(yMin)) / Math.max(1e-9, ln(yMax) - ln(yMin)))
+    : pad.t + plotH() * (1 - (v - yMin) / Math.max(1e-9, yMax - yMin));
+  // Rival lines in a race: slot -> { sym, color, hist (aligned with history), pts }
+  const racers = {};
+  const RACE_COLORS = ["#4dc3ff", "#ffb547", "#ff6bd5", "#b892ff"];
   const xOf = (i, shift) => pad.l + plotW() * ((i - (history.length - span) - shift) / (span - 1));
 
   function runRec() {
@@ -194,6 +205,26 @@ TC.chart = (() => {
     }
   }
 
+  // Rival lines: thinner, colored, with their ticker at the tip. A rival who finished gets a flag.
+  function drawRacers() {
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    for (const k in racers) {
+      const rc = racers[k], p = rc.pts;
+      if (p.length < 2) continue;
+      ctx.strokeStyle = rc.color; ctx.shadowColor = rc.color; ctx.shadowBlur = TC.perf && TC.perf.low ? 0 : 8;
+      ctx.lineWidth = 1.8; ctx.globalAlpha = 0.85;
+      ctx.beginPath();
+      for (let i = 0; i < p.length; i++) i ? ctx.lineTo(p[i].x, p[i].y) : ctx.moveTo(p[i].x, p[i].y);
+      ctx.stroke();
+      ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+      const t = p[p.length - 1];
+      ctx.fillStyle = rc.color;
+      ctx.beginPath(); ctx.arc(t.x, t.y, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.font = '600 11px "IBM Plex Mono", monospace'; ctx.textAlign = "right"; ctx.textBaseline = "bottom";
+      ctx.fillText((rc.done ? "⚑ " : "") + "$" + rc.sym, t.x - 6, t.y - 5);
+    }
+  }
+
   const api = {
     init(el) {
       const saved = TC.state && TC.state.data.settings.zoom;
@@ -279,13 +310,25 @@ TC.chart = (() => {
         sinceSample -= cfg.sampleMs;
         history.push(live); hiArr.push(live); loArr.push(live);
         if (history.length > MAX) { history.shift(); hiArr.shift(); loArr.shift(); }
+        for (const k in racers) { const hh = racers[k].hist; hh.push(hh[hh.length - 1]); if (hh.length > MAX) hh.shift(); }
       }
+      const raceOn = !!(TC.race && TC.race.live());
+      if (raceOn) {
+        for (const r of TC.race.rivals()) {
+          let rc = racers[r.slot];
+          if (!rc || rc.sym !== r.sym) rc = racers[r.slot] = { sym: r.sym, hist: new Array(history.length).fill(NaN), pts: [] };
+          rc.color = RACE_COLORS[r.slot % RACE_COLORS.length];
+          rc.done = r.finish != null;
+          rc.hist[rc.hist.length - 1] = r.price;
+        }
+      } else for (const k in racers) delete racers[k];
       const L = history.length - 1;
       history[L] = live;
       if (live > hiArr[L]) hiArr[L] = live;
       if (live < loArr[L]) loArr[L] = live;
       recordRun(dt, live);
 
+      logY = raceOn && !allOn();
       if (allOn()) {
         // ALL: the whole run fits the plot; the axis spans its low to high (and your ATH)
         const r = runRec(), n = r.p.length;
@@ -304,6 +347,28 @@ TC.chart = (() => {
       // Ease the y-axis so the current price sits near the middle: the range reaches as far
       // above and below it as the furthest visible point, plus 15%, and never narrower than +-10%.
       const vs = visStart();
+      if (logY) {
+        // Race: fit every visible line, yours and your rivals', with some room above and below
+        let peak = Math.max(...history.slice(vs), live), low = Math.min(...history.slice(vs), live);
+        for (const k in racers) for (const v of racers[k].hist.slice(vs)) if (v > 0) { if (v > peak) peak = v; if (v < low) low = v; }
+        low = Math.max(LOG_FLOOR, low);
+        const room = Math.pow(Math.max(1.5, peak / low), 0.12 * yScale);
+        const tMax = Math.max(peak * room, low * 4), tMin = Math.max(LOG_FLOOR, low / room);
+        // ease in log space
+        yMax = Math.exp(Math.log(yMax > 0 ? yMax : tMax) + (Math.log(tMax) - Math.log(yMax > 0 ? yMax : tMax)) * Math.min(1, 4 * dt));
+        yMin = Math.exp(Math.log(Math.max(LOG_FLOOR, yMin)) + (Math.log(tMin) - Math.log(Math.max(LOG_FLOOR, yMin))) * Math.min(1, 4 * dt));
+        if (tagFlash.t > 0) tagFlash.t -= dt;
+        if (glowT > 0) glowT -= dt;
+        const shift = sinceSample / cfg.sampleMs, n = history.length;
+        pts = [];
+        for (let i = vs; i < n; i++) pts.push({ x: xOf(i, i === n - 1 ? 0 : shift), y: yOf(history[i]) });
+        for (const k in racers) {
+          const rc = racers[k], hh = rc.hist;
+          rc.pts = [];
+          for (let i = vs; i < n; i++) if (hh[i] > 0) rc.pts.push({ x: xOf(i, i === n - 1 ? 0 : shift), y: yOf(hh[i]) });
+        }
+        return;
+      }
       const peak = Math.max(...(mode === "candles" ? hiArr : history).slice(vs), 1);
       const low = Math.min(...(mode === "candles" ? loArr : history).slice(vs));
       const half = Math.max(peak - live, live - low, live * 0.1, 0.5) * 1.15 * yScale;
@@ -341,7 +406,23 @@ TC.chart = (() => {
       ctx.font = '500 10px "IBM Plex Mono", monospace';
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
-      for (let v = Math.ceil(yMin / step) * step; v <= yMax; v += step) {
+      if (logY) {
+        // Log axis labelled in market cap: 1-2-5 steps for a narrow range, powers of ten for a wide one
+        const decades = Math.log10(yMax / yMin);
+        const mults = decades < 1.2 ? [1, 1.5, 2, 3, 5, 7] : decades < 3 ? [1, 2, 5] : [1];
+        for (let e = Math.floor(Math.log10(yMin)); e <= Math.ceil(Math.log10(yMax)); e++) {
+          for (const m of mults) {
+            const v = m * Math.pow(10, e);
+            if (v < yMin || v > yMax) continue;
+            const y = Math.round(yOf(v)) + 0.5;
+            ctx.strokeStyle = C.rule; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+            ctx.fillStyle = C.axis;
+            ctx.fillText(TC.format.axis(TC.market.marketCap(v)), w - pad.r + 8, y);
+          }
+        }
+      }
+      for (let v = Math.ceil(yMin / step) * step; !logY && v <= yMax; v += step) {
         const y = Math.round(yOf(v)) + 0.5;
         ctx.strokeStyle = C.rule;
         ctx.lineWidth = 1;
@@ -398,6 +479,7 @@ TC.chart = (() => {
         ctx.fillText("ATH " + TC.format.axis(TC.market.px(best)), pad.l + 4, y - 3);
       }
 
+      if (logY) drawRacers();
       if (mode === "candles") {
         all ? drawCandlesAll() : drawCandles();
         ctx.restore();
@@ -443,7 +525,7 @@ TC.chart = (() => {
       ctx.shadowBlur = 0;
 
       // Price tag pill: green, flashes red on a sell
-      const label = TC.format.axis(TC.market.px(history[n - 1]));
+      const label = logY ? TC.format.axis(TC.market.marketCap(history[n - 1])) : TC.format.axis(TC.market.px(history[n - 1]));
       ctx.font = '600 11px "IBM Plex Mono", monospace';
       const lw = ctx.measureText(label).width + 14;
       const ly = Math.max(pad.t, Math.min(h - pad.b, t.y));

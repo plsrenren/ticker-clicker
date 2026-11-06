@@ -20,7 +20,7 @@ TC.prestige = (() => {
       const s = st();
       s.prestige.points += pts;
       s.prestige.count++;
-      TC.events.emit("private", { points: pts, total: s.prestige.points, symbol: s.symbol, best: s.bestPrice });
+      TC.events.emit("private", { points: pts, total: s.prestige.points, symbol: s.symbol, best: s.bestPrice, secs: s.clock });
       return true;
     },
   };

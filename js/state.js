@@ -6,7 +6,9 @@
 window.TC = window.TC || {};
 
 TC.state = (() => {
-  const KEY = "ticker-clicker-v1";
+  const SOLO = "ticker-clicker-v1";
+  // A race keeps its own save per room code (js/race.js), so racing never touches your solo game
+  const key = () => (TC.mode && TC.mode.race ? "ticker-clicker-race-" + (TC.mode.code || "new") : SOLO);
   const META = ["prestige", "achievements", "lifetime", "settings", "lastSeen"];
 
   function fresh() {
@@ -53,7 +55,18 @@ TC.state = (() => {
     fresh,
     load() {
       try {
-        const raw = localStorage.getItem(KEY);
+        if (TC.mode && TC.mode.race) {
+          // Drop saves from older races, and bring your settings (sound, chart style, hints seen) along
+          for (let i = localStorage.length - 1; i >= 0; i--) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith("ticker-clicker-race-") && k !== key()) localStorage.removeItem(k);
+          }
+          if (!localStorage.getItem(key())) {
+            const solo = JSON.parse(localStorage.getItem(SOLO) || "null");
+            if (solo && solo.settings) Object.assign(s.settings, solo.settings);
+          }
+        }
+        const raw = localStorage.getItem(key());
         if (raw) {
           const saved = JSON.parse(raw);
           const base = fresh();
@@ -73,7 +86,7 @@ TC.state = (() => {
     },
     save() {
       s.lastSeen = Date.now();
-      try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* ignore */ }
+      try { localStorage.setItem(key(), JSON.stringify(s)); } catch (e) { /* ignore */ }
     },
     // Go private: wipe the run, keep the meta.
     newRun() {
@@ -84,7 +97,7 @@ TC.state = (() => {
     // Delist: wipe everything.
     reset() {
       Object.assign(s, fresh());
-      try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
+      try { localStorage.removeItem(key()); } catch (e) { /* ignore */ }
     },
   };
 })();
