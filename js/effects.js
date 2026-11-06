@@ -348,7 +348,7 @@ TC.effects = (() => {
     const shots = c.max ? 15 : Math.round(12 * c.p);
     const add = shots * TC.market.perClick();
     // the y-axis starts at $0, so screen height is proportional to price
-    const y = Math.max(b.t, b.b - (b.b - tip.y) * (price + add) / price);
+    const y = Math.max(b.t, tip.y - (TC.chart.yOf(price) - TC.chart.yOf(price + add)));
     g.save();
     // the line
     g.strokeStyle = c.max ? C.core : C.line;

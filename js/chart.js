@@ -16,6 +16,7 @@ TC.chart = (() => {
   let pts = [];
   let sinceSample = 0;
   let yMax = 10;            // animated top of the y-axis
+  let yMin = 0;             // animated bottom of the y-axis (the current price sits near the middle)
   let tagFlash = { kind: "up", t: 0 };
   const pad = { l: 10, r: 66, t: 18, b: 26 };
   const MAX = cfg.historyMax || cfg.historyPoints;
@@ -51,7 +52,7 @@ TC.chart = (() => {
 
   const plotW = () => w - pad.l - pad.r;
   const plotH = () => h - pad.t - pad.b;
-  const yOf = (v) => pad.t + plotH() * (1 - v / yMax);
+  const yOf = (v) => pad.t + plotH() * (1 - (v - yMin) / Math.max(1e-9, yMax - yMin));
   const xOf = (i, shift) => pad.l + plotW() * ((i - (history.length - span) - shift) / (span - 1));
 
   function strokeLine() {
@@ -108,7 +109,7 @@ TC.chart = (() => {
 
     clear() {
       api.fill(0);
-      yMax = 10;
+      yMax = 10; yMin = 0;
     },
 
     // Restore the visible line to a flat level (used after loading a save).
@@ -173,12 +174,16 @@ TC.chart = (() => {
       if (live > hiArr[L]) hiArr[L] = live;
       if (live < loArr[L]) loArr[L] = live;
 
-      // Ease the y-axis toward headroom above the visible peak.
+      // Ease the y-axis so the current price sits near the middle: the range reaches as far
+      // above and below it as the furthest visible point, plus 15%, and never narrower than +-10%.
       const vs = visStart();
       const peak = Math.max(...(mode === "candles" ? hiArr : history).slice(vs), 1);
-      const target = Math.max(10, peak * 1.25);
-      const k = target > yMax ? 8 : 1.5; // grow fast, shrink slowly
-      yMax += (target - yMax) * Math.min(1, k * dt);
+      const low = Math.min(...(mode === "candles" ? loArr : history).slice(vs));
+      const half = Math.max(peak - live, live - low, live * 0.1, 0.5) * 1.15;
+      const tMax = live + half, tMin = Math.max(0, live - half);
+      const kMax = tMax > yMax ? 8 : 1.5, kMin = tMin < yMin ? 8 : 1.5; // widen fast, tighten slowly
+      yMax += (tMax - yMax) * Math.min(1, kMax * dt);
+      yMin += (tMin - yMin) * Math.min(1, kMin * dt);
 
       if (tagFlash.t > 0) tagFlash.t -= dt;
 
@@ -190,6 +195,7 @@ TC.chart = (() => {
     },
 
     points: () => pts,
+    yOf: (v) => yOf(v),
     tip: () => pts[pts.length - 1] || { x: w - pad.r, y: h - pad.b },
     // Inset the plot (e.g. when the chart sits behind the header and dock)
     setPad(p) { Object.assign(pad, p); },
@@ -202,11 +208,11 @@ TC.chart = (() => {
       const n = history.length;
 
       // Grid + y labels
-      const step = niceStep(yMax, 5);
+      const step = niceStep(yMax - yMin, 5);
       ctx.font = '500 10px "IBM Plex Mono", monospace';
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
-      for (let v = 0; v <= yMax; v += step) {
+      for (let v = Math.ceil(yMin / step) * step; v <= yMax; v += step) {
         const y = Math.round(yOf(v)) + 0.5;
         ctx.strokeStyle = C.rule;
         ctx.lineWidth = 1;
@@ -242,9 +248,9 @@ TC.chart = (() => {
       grad.addColorStop(0, C.line + "26");
       grad.addColorStop(1, C.line + "00");
       ctx.beginPath();
-      ctx.moveTo(pts[0].x, yOf(0));
+      ctx.moveTo(pts[0].x, h - pad.b);
       for (const p of pts) ctx.lineTo(p.x, p.y);
-      ctx.lineTo(pts[pts.length - 1].x, yOf(0));
+      ctx.lineTo(pts[pts.length - 1].x, h - pad.b);
       ctx.closePath();
       ctx.fillStyle = grad;
       ctx.fill();
