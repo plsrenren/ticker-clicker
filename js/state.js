@@ -34,7 +34,8 @@ TC.state = (() => {
       dividendsOn: true, // dividend payouts switched on (dividends.js)
       indexed: false,    // index inclusion happened this run (news.js)
       buybackHeat: 0,    // buyback premium (market.buybackCost)
-      buybackAt: 0,      // current market season { id, left, next, warned }, so reloads don't reset it
+      buybackAt: 0,
+      runChart: null,    // long-term price record for the chart's ALL view (chart.js)      // current market season { id, left, next, warned }, so reloads don't reset it
 
       // ---- meta ----
       prestige: { points: 0, count: 0 },

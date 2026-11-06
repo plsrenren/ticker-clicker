@@ -129,11 +129,15 @@ body {
 .chart-hint.gone { opacity: 0; animation: none; }
 @keyframes pulse { 50% { opacity: 0.45; } }
 
-/* ---------- Line / candles toggle ---------- */
-.mode-toggle {
+/* ---------- LIVE / ALL and Line / candles toggles ---------- */
+.chart-toggles {
   position: absolute;
   left: max(10px, env(safe-area-inset-left, 0px));
   bottom: 34px;
+  display: flex;
+  gap: 6px;
+}
+.mode-toggle {
   display: flex;
   border: 1px solid var(--rule);
   border-radius: 14px;
@@ -150,6 +154,7 @@ body {
   font-size: 11px;
   cursor: pointer;
 }
+.range-toggle button { letter-spacing: 0.06em; }
 .mode-toggle button[aria-pressed="true"] { background: var(--rule); color: var(--text); }
 .mode-toggle button:focus-visible { outline: 2px solid var(--up); outline-offset: -2px; }
 
@@ -861,7 +866,7 @@ body {
   .rivals { background: var(--ink); margin-bottom: 0; padding-bottom: 0; }
   .tape { padding-top: 10px; }
   .chart-hint { top: calc(var(--plot-t) + (100% - var(--plot-t) - var(--plot-b)) * 0.4); }
-  .mode-toggle { bottom: calc(var(--plot-b) + 8px); }
+  .chart-toggles { bottom: calc(var(--plot-b) + 8px); }
   .dip-btn { bottom: calc(var(--plot-b) + 38px); }
   .news, .sound-btn { top: calc(var(--plot-t) - 10px); }
 }
@@ -874,7 +879,7 @@ body {
   .rivals { background: var(--ink); }
   .chart-hint, .dip-btn { left: calc(var(--plot-l) + (100% - var(--plot-l) - var(--plot-r) - 66px) / 2); }
   .chart-hint { top: calc(var(--plot-t) + (100% - var(--plot-t) - var(--plot-b)) * 0.4); }
-  .mode-toggle { left: var(--plot-l); bottom: calc(var(--plot-b) + 8px); }
+  .chart-toggles { left: var(--plot-l); bottom: calc(var(--plot-b) + 8px); }
   .dip-btn { bottom: calc(var(--plot-b) + 38px); }
   .news, .sound-btn { top: calc(var(--plot-t) - 10px); }
   .sound-btn { right: calc(var(--plot-r) + 10px); }

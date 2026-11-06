@@ -7,6 +7,7 @@
 //   TC.chart.zoomBy(f)   scale the visible time window (f < 1 zooms in); saved in settings.zoom
 //   TC.chart.zoomY(f)    scale the price axis around the current price (f < 1 zooms in); settings.yZoom
 //   TC.chart.resetY()    back to the automatic price axis
+//   TC.chart.setRange(r) "live" (follows the price, zoomable) or "all" (the whole run since the IPO)
 window.TC = window.TC || {};
 
 TC.chart = (() => {
@@ -15,6 +16,10 @@ TC.chart = (() => {
   let history = [];      // close of each sample
   let hiArr = [], loArr = []; // high/low seen during each sample, for candle wicks
   let mode = "line";     // "line" | "candles"
+  let range = "live";    // "live" | "all"
+  // Long-term record of the whole run for the ALL view, kept in the save (state.runChart):
+  // one point every `every` seconds; when it gets too long, pairs merge and `every` doubles.
+  const RUN_MAX = 600;
   let pts = [];
   let sinceSample = 0;
   let yMax = 10;            // animated top of the y-axis
@@ -58,6 +63,60 @@ TC.chart = (() => {
   const plotH = () => h - pad.t - pad.b;
   const yOf = (v) => pad.t + plotH() * (1 - (v - yMin) / Math.max(1e-9, yMax - yMin));
   const xOf = (i, shift) => pad.l + plotW() * ((i - (history.length - span) - shift) / (span - 1));
+
+  function runRec() {
+    const s = TC.state && TC.state.data;
+    if (!s) return null;
+    if (!s.runChart || !Array.isArray(s.runChart.p)) s.runChart = { every: 2, t: 0, p: [], hi: [], lo: [], fromIpo: s.clock < 5 };
+    return s.runChart;
+  }
+  function recordRun(dt, live) {
+    const s = TC.state && TC.state.data;
+    if (!s || !s.listed || !(live > 0)) return;
+    const r = runRec();
+    const L = r.p.length - 1;
+    r.t += dt;
+    if (L < 0 || r.t >= r.every) {
+      r.t = L < 0 ? 0 : Math.min(r.t - r.every, r.every);
+      r.p.push(live); r.hi.push(live); r.lo.push(live);
+      if (r.p.length > RUN_MAX) {
+        const p = [], hi = [], lo = [];
+        for (let i = 0; i < r.p.length; i += 2) {
+          const j = Math.min(i + 1, r.p.length - 1);
+          p.push(r.p[j]); hi.push(Math.max(r.hi[i], r.hi[j])); lo.push(Math.min(r.lo[i], r.lo[j]));
+        }
+        r.p = p; r.hi = hi; r.lo = lo; r.every *= 2;
+      }
+    } else {
+      r.p[L] = live;
+      if (live > r.hi[L]) r.hi[L] = live;
+      if (live < r.lo[L]) r.lo[L] = live;
+    }
+  }
+  const allOn = () => { const r = range === "all" && runRec(); return !!r && r.p.length >= 3; };
+
+  // Candles for the ALL view: about 60 across the run
+  function drawCandlesAll() {
+    const r = runRec(), n = r.p.length;
+    const K = Math.max(1, Math.ceil(n / 60));
+    const step = plotW() / (n - 1);
+    const bodyW = Math.max(2, step * K * 0.62);
+    let open = r.p[0];
+    for (let start = 0; start < n; start += K) {
+      const end = Math.min(n - 1, start + K - 1);
+      let hi = -Infinity, lo = Infinity;
+      for (let i = start; i <= end; i++) { if (r.hi[i] > hi) hi = r.hi[i]; if (r.lo[i] < lo) lo = r.lo[i]; }
+      const close = r.p[end];
+      const color = close >= open ? C.up : C.down;
+      const cx = pad.l + step * (start + end) / 2;
+      ctx.strokeStyle = color; ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 8; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(cx, yOf(hi)); ctx.lineTo(cx, yOf(lo)); ctx.stroke();
+      const yO = yOf(open), yC = yOf(close);
+      ctx.fillRect(cx - bodyW / 2, Math.min(yO, yC), bodyW, Math.max(1.5, Math.abs(yC - yO)));
+      ctx.shadowBlur = 0;
+      open = close;
+    }
+  }
 
   function strokeLine() {
     ctx.beginPath();
@@ -157,17 +216,21 @@ TC.chart = (() => {
       hiArr = history.slice(); loArr = history.slice();
     },
 
+    range: () => range,
+    setRange(r) { range = r === "all" ? "all" : "live"; },
     mode: () => mode,
     setMode(m) { mode = m === "candles" ? "candles" : "line"; },
 
     span: () => span,
     yZoomed: () => Math.abs(yScale - 1) > 0.01,
     zoomY(f) {
+      if (range === "all") return TC.ui && TC.ui.setChartRange("live"); // zooming means you want the live view back
       yScale = Math.max(0.15, Math.min(6, yScale * f));
       if (TC.state) TC.state.data.settings.yZoom = yScale;
     },
     resetY() { yScale = 1; if (TC.state) TC.state.data.settings.yZoom = 1; },
     zoomBy(f) {
+      if (range === "all") return TC.ui && TC.ui.setChartRange("live");
       const next = clampSpan(span * f);
       if (next === span) return;
       span = next;
@@ -185,6 +248,23 @@ TC.chart = (() => {
       history[L] = live;
       if (live > hiArr[L]) hiArr[L] = live;
       if (live < loArr[L]) loArr[L] = live;
+      recordRun(dt, live);
+
+      if (allOn()) {
+        // ALL: the whole run fits the plot; the axis spans its low to high (and your ATH)
+        const r = runRec(), n = r.p.length;
+        let hi = Math.max(...(mode === "candles" ? r.hi : r.p), live, TC.state.data.bestPrice || 0);
+        let lo = Math.min(...(mode === "candles" ? r.lo : r.p), live);
+        const margin = Math.max((hi - lo) * 0.08, hi * 0.02, 0.5);
+        const tMax = hi + margin, tMin = Math.max(0, lo - margin);
+        yMax += (tMax - yMax) * Math.min(1, 6 * dt);
+        yMin += (tMin - yMin) * Math.min(1, 6 * dt);
+        if (tagFlash.t > 0) tagFlash.t -= dt;
+        if (glowT > 0) glowT -= dt;
+        pts = [];
+        for (let i = 0; i < n; i++) pts.push({ x: pad.l + plotW() * (i / (n - 1)), y: yOf(i === n - 1 ? live : r.p[i]) });
+        return;
+      }
 
       // Ease the y-axis so the current price sits near the middle: the range reaches as far
       // above and below it as the furthest visible point, plus 15%, and never narrower than +-10%.
@@ -235,7 +315,8 @@ TC.chart = (() => {
         ctx.fillText(TC.format.axis(TC.market.px(v)), w - pad.r + 8, y);
       }
 
-      if (Math.abs(yScale - 1) > 0.01) {
+      const all = allOn();
+      if (!all && Math.abs(yScale - 1) > 0.01) {
         ctx.fillStyle = C.muted;
         ctx.textAlign = "left";
         ctx.fillText("AUTO ↺", w - pad.r + 8, h - pad.b - 10);
@@ -244,11 +325,24 @@ TC.chart = (() => {
       // Time labels
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
-      const secs = (span * cfg.sampleMs) / 1000;
+      if (all) {
+        // ALL: four labels from the start of the run to now
+        const r = runRec();
+        const total = (r.p.length - 1) * r.every + r.t;
+        const long = (s) => s < 60 ? `-${Math.round(s)}s` : s < 3600 ? `-${Math.round(s / 60)}m` : `-${Math.floor(s / 3600)}h${Math.round((s % 3600) / 60)}m`;
+        for (let k = 0; k <= 3; k++) {
+          const x = pad.l + plotW() * (k / 3);
+          ctx.fillStyle = C.muted;
+          ctx.textAlign = k === 0 ? "left" : k === 3 ? "right" : "center";
+          ctx.fillText(k === 3 ? "now" : k === 0 && r.fromIpo ? "IPO" : long(total * (1 - k / 3)), x, h - pad.b + 8);
+        }
+        ctx.textAlign = "center";
+      }
+      const secs = all ? 0 : (span * cfg.sampleMs) / 1000;
       // About 4 labels whatever the zoom
       const every = [2, 5, 10, 15, 30, 60, 90, 120].find((e) => secs / e <= 4.5) || 120;
       const fmt = (s) => s === 0 ? "now" : s < 60 ? `-${s}s` : s % 60 ? `-${Math.floor(s / 60)}m${s % 60}s` : `-${s / 60}m`;
-      for (let s = 0; s <= secs + 0.01; s += every) {
+      for (let s = 0; !all && s <= secs + 0.01; s += every) {
         const x = pad.l + plotW() * (1 - s / secs);
         ctx.fillStyle = C.muted;
         ctx.fillText(fmt(s), x, h - pad.b + 8);
@@ -259,8 +353,18 @@ TC.chart = (() => {
       ctx.rect(pad.l, 0, plotW(), h - pad.b);
       ctx.clip();
 
+      // ALL: dotted line at your all-time high
+      const best = TC.state && TC.state.data.bestPrice;
+      if (all && best > 0) {
+        const y = Math.round(yOf(best)) + 0.5;
+        ctx.strokeStyle = C.up + "66"; ctx.lineWidth = 1; ctx.setLineDash([2, 4]);
+        ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke(); ctx.setLineDash([]);
+        ctx.font = '500 10px "IBM Plex Mono", monospace'; ctx.fillStyle = C.up; ctx.textAlign = "left"; ctx.textBaseline = "bottom";
+        ctx.fillText("ATH " + TC.format.axis(TC.market.px(best)), pad.l + 4, y - 3);
+      }
+
       if (mode === "candles") {
-        drawCandles();
+        all ? drawCandlesAll() : drawCandles();
         ctx.restore();
       } else {
       // Soft area under the line
