@@ -11,6 +11,15 @@ TC.hype = (() => {
   const $ = (id) => document.getElementById(id);
   const rand = (a, b) => a + Math.random() * (b - a);
   const STEP = 0.1;
+  // Callout words: each hype move flashes one of these at random (flavor only)
+  const WORDS = {
+    pr: ["PRESS RELEASE", "BIG ANNOUNCEMENT", "OFFICIAL STATEMENT", "BREAKING NEWS", "PRESS TOUR", "EXCLUSIVE"],
+    tweet: ["TWEET STORM", "GOING VIRAL", "TRENDING", "RATIO'D THE BEARS", "POSTING SPREE", "ROCKET EMOJIS"],
+    rumor: ["MERGER RUMOR", "DEAL TALK", "SOURCES SAY", "TAKEOVER BUZZ", "INSIDERS WHISPER", "M&A CHATTER"],
+    denied: ["RUMOR DENIED", "NO DEAL", "FAKE NEWS", "TALKS COLLAPSE", "SOURCES WRONG", "DEAL OFF"],
+    scandal: ["SCANDAL", "BACKLASH", "CANCELLED", "PR DISASTER", "INVESTIGATION", "DELETED POSTS"],
+  };
+  const word = (k) => WORDS[k][Math.floor(Math.random() * WORDS[k].length)];
 
   const moves = [
     {
@@ -18,7 +27,7 @@ TC.hype = (() => {
       run() {
         if (scandal()) return scandalHit();
         play([{ f: rand(0.1, 0.16), d: 2.5 }], "pr");
-        return { title: "PRESS RELEASE", tone: "up" };
+        return { title: word("pr"), tone: "up" };
       },
     },
     {
@@ -27,7 +36,7 @@ TC.hype = (() => {
         if (scandal()) return scandalHit();
         boostUntil = st().clock + 10;
         play([{ f: rand(0.03, 0.06), d: 1.5 }]);
-        return { title: "TWEET STORM", tone: "up" };
+        return { title: word("tweet"), tone: "up" };
       },
     },
     {
@@ -36,14 +45,14 @@ TC.hype = (() => {
         if (Math.random() < 0.7) {
           const up = rand(0.18, 0.3);
           play([{ f: up, d: 3 }, { f: (1 + up * 0.66) / (1 + up) - 1, d: 3 }]);
-          return { title: "MERGER RUMOR", tone: "up" };
+          return { title: word("rumor"), tone: "up" };
         }
         play([{ f: -rand(0.08, 0.12), d: 1 }]);
         // Getting caught locks every hype move for 30s
         const until = st().clock + 30;
         for (const x of moves) readyAt[x.id] = Math.max(readyAt[x.id] || 0, until);
         lockedUntil = until;
-        return { title: "RUMOR DENIED", tone: "down" };
+        return { title: word("denied"), tone: "down" };
       },
     },
     {
@@ -72,7 +81,7 @@ TC.hype = (() => {
   const scandal = () => TC.seasons && TC.seasons.current() === "bear" && Math.random() < 0.3;
   function scandalHit() {
     play([{ f: -rand(0.1, 0.18), d: 1.2 }]);
-    return { title: "SCANDAL", tone: "down" };
+    return { title: word("scandal"), tone: "down" };
   }
   let boostUntil = -1;     // tweet storm end time
   let segs = null, seg = 0, segT = 0, acc = 0, applied = 0;
