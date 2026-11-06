@@ -121,6 +121,11 @@ TC.rivals = (() => {
     names: () => NAMES.slice(),
     // A random rival symbol, optionally avoiding some
     pick(avoid = []) { const pool = NAMES.filter((n) => !avoid.includes(n)); return pool[Math.floor(Math.random() * pool.length)]; },
+    // A random made-up rival worth more than `cap` (at least 1.5x), or null if you've outgrown them all
+    pickBigger(cap) {
+      const pool = rivals.filter((x) => capOf(x) >= cap * 1.5).map((x) => x.sym);
+      return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
+    },
     move(sym, frac, glow = 3) {
       const r = find(sym);
       if (!r) return;

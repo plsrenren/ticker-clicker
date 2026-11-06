@@ -47,8 +47,18 @@ TC.news = (() => {
     side: { takeover: 1, rivalScandal: 1, partner: 1, copycat: 1, hostile: 1, sector: 1, poach: 1 },
     frenzy: { takeover: 2, rivalScandal: 2, partner: 1, copycat: 1, hostile: 2, sector: 1, poach: 0.5 },
   };
+  // Size rules: only a bigger rival can try to buy you, options markets only exist from $100M,
+  // and rug rumors are a small/mid-cap thing (gone above $50B)
+  const bigRival = () => TC.rivals.pickBigger(cap());
+  const OPTIONS_CAP = 1e8, RUG_MAX_CAP = 5e10;
+  function classicPool() {
+    return CLASSIC.filter((n) => !(n === "opex" && cap() < OPTIONS_CAP) && !(n === "rug" && cap() > RUG_MAX_CAP));
+  }
+  // Finfluencers move small caps far more than giants: full effect up to $1B, about 0.56x at $100B, 0.35x floor near $1T
+  const influFade = () => Math.max(0.35, Math.min(1, 1 - 0.22 * Math.log10(Math.max(1, cap() / 1e9))));
   function pickRival() {
-    const w = RIVAL_W[(TC.seasons && TC.seasons.current()) || "side"] || RIVAL_W.side;
+    const w = Object.assign({}, RIVAL_W[(TC.seasons && TC.seasons.current()) || "side"] || RIVAL_W.side);
+    if (!bigRival()) { w.takeover = 0; w.hostile = 0; } // nobody on the tape is big enough to buy you
     const names = Object.keys(w);
     let r = Math.random() * names.reduce((s, n) => s + w[n], 0);
     for (const n of names) { r -= w[n]; if (r <= 0) return n; }
@@ -202,7 +212,8 @@ TC.news = (() => {
               TC.events.emit("news", { type: "squeeze", tone: "up", big: true });
               TC.market.shift(up, "short");
               t = T; // start the outro timer
-              gamma = { t: -1.2, taps: 0, done: false }; // let the squeeze banner read, then offer the second leg
+              // let the squeeze banner read, then offer the second leg (options dealers only exist from $100M)
+              gamma = cap() >= OPTIONS_CAP ? { t: -1.2, taps: 0, done: false } : null;
             } else if (t >= T) {
               resolved = true;
               const down = mag(0.2, 0.3);
@@ -571,7 +582,7 @@ TC.news = (() => {
 
     // Pump and dump: rockets up 40-80%, then gives back 75-125% of the gain (can end below where it started).
     pump() {
-      const gain = mag(0.4, 0.8);
+      const gain = mag(0.4, 0.8) * influFade();
       const giveBack = rand(0.75, 1.25);
       let t = 0, phase = 0, start = 0, peak = 0;
       return {
@@ -602,7 +613,7 @@ TC.news = (() => {
     // Takeover rumor (good): a rival "wants to buy you". Big pump, then the deal falls through.
     // Sell near the top to keep the gains (it counts as an event peak).
     takeover() {
-      const R = rival(), gain = mag(0.25, 0.4), keep = 0.3;
+      const R = bigRival() || rival(), gain = mag(0.25, 0.4), keep = 0.3;
       let t = 0, phase = 0, start = 0, peak = 0;
       return {
         start() {
@@ -718,7 +729,7 @@ TC.news = (() => {
     // Hostile takeover (bad): a lowball bid drags your price down. Out-tap it, or you're forced
     // to sell part of your stake at the bid price.
     hostile() {
-      const R = rival(), T = 6, need = 25;
+      const R = bigRival() || rival(), T = 6, need = 25;
       let t = 0, taps = 0, resolved = false, start = 0, bid = 0;
       return {
         start() {
@@ -841,7 +852,7 @@ TC.news = (() => {
       if (active) return false;
       // 40% of random events involve a rival ticker
       if (!name && TC.market.px(st().basePrice) >= 1000 && Math.random() < cfg.news.splitChance) name = "split";
-      if (!name) name = Math.random() < 0.4 ? pickRival() : (TC.seasons ? TC.seasons.pickNews(CLASSIC) : pick(CLASSIC));
+      if (!name) name = Math.random() < 0.4 ? pickRival() : (TC.seasons ? TC.seasons.pickNews(classicPool()) : pick(classicPool()));
       const make = types[name];
       active = make(opts);
       active.type = name;
