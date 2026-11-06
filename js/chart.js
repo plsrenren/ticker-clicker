@@ -70,21 +70,42 @@ TC.chart = (() => {
   }
   // Start the record. A run already under way (a save from before this record existed) gets a
   // believable made-up path from $0 at the IPO to now, the same way the live chart is filled on load.
+  // n points from $0 to `to`: an ease-in climb in log space with some noise and the odd dip
+  function fakePath(n, to) {
+    const a = Math.log(Math.min(to, 0.25)), b = Math.log(to), path = [], out = [];
+    let x = 0;
+    for (let i = 0; i < n; i++) { x += (Math.random() - 0.5) * 0.08 + (Math.random() < 0.01 ? -0.15 : 0); path.push(x); }
+    for (let i = 0; i < n; i++) {
+      const f = i / (n - 1);
+      out.push(i === 0 ? 0 : Math.exp(a + (b - a) * Math.pow(f, 0.8) + path[i] - path[n - 1] * f));
+    }
+    out[n - 1] = to;
+    return out;
+  }
+  function halve(r) {
+    const p = [], hi = [], lo = [];
+    for (let i = 0; i < r.p.length; i += 2) {
+      const j = Math.min(i + 1, r.p.length - 1);
+      p.push(i === 0 ? r.p[0] : r.p[j]); hi.push(Math.max(r.hi[i], r.hi[j])); lo.push(Math.min(r.lo[i], r.lo[j])); // keep the IPO point
+    }
+    r.p = p; r.hi = hi; r.lo = lo; r.every *= 2;
+  }
+  // A record that began mid-run (made by the first version of this view): fill in the time before it
+  function backfill(s, r) {
+    r.fromIpo = true;
+    const pre = s.clock - ((r.p.length - 1) * r.every + r.t);
+    if (pre < 6 || !(r.p[0] > 0)) { r.p.unshift(0); r.hi.unshift(0); r.lo.unshift(0); return; }
+    const n = Math.max(2, Math.round(pre / r.every));
+    const fake = fakePath(n + 1, r.p[0]).slice(0, n);
+    r.p = fake.concat(r.p); r.hi = fake.concat(r.hi); r.lo = fake.concat(r.lo);
+    while (r.p.length > RUN_MAX) halve(r);
+  }
   function startRun(s, live) {
     const r = { every: 2, t: 0, p: [], hi: [], lo: [], fromIpo: true };
     if (s.clock >= 6 && live > 0) {
       const n = Math.max(3, Math.min(RUN_MAX, Math.floor(s.clock / 2)));
       r.every = s.clock / (n - 1);
-      const a = Math.log(Math.min(live, 0.25)), b = Math.log(live), path = [];
-      let x = 0;
-      for (let i = 0; i < n; i++) { x += (Math.random() - 0.5) * 0.08 + (Math.random() < 0.01 ? -0.15 : 0); path.push(x); }
-      for (let i = 0; i < n; i++) {
-        const f = i / (n - 1);
-        // ease-in curve in log space: slow start, faster climb, like a real run
-        const v = i === 0 ? 0 : Math.exp(a + (b - a) * Math.pow(f, 0.8) + path[i] - path[n - 1] * f);
-        r.p.push(v); r.hi.push(v); r.lo.push(v);
-      }
-      r.p[n - 1] = r.hi[n - 1] = r.lo[n - 1] = live;
+      r.p = fakePath(n, live); r.hi = r.p.slice(); r.lo = r.p.slice();
     } else {
       // A fresh listing: pin the IPO point at $0, then the live point keeps updating after it
       r.p = [0, live]; r.hi = [0, live]; r.lo = [0, live];
@@ -95,19 +116,13 @@ TC.chart = (() => {
     const s = TC.state && TC.state.data;
     if (!s || !s.listed || !(live >= 0)) return;
     const r = runRec() || startRun(s, live);
+    if (!r.fromIpo) backfill(s, r);
     const L = r.p.length - 1;
     r.t += dt;
     if (L < 0 || r.t >= r.every) {
       r.t = L < 0 ? 0 : Math.min(r.t - r.every, r.every);
       r.p.push(live); r.hi.push(live); r.lo.push(live);
-      if (r.p.length > RUN_MAX) {
-        const p = [], hi = [], lo = [];
-        for (let i = 0; i < r.p.length; i += 2) {
-          const j = Math.min(i + 1, r.p.length - 1);
-          p.push(r.p[j]); hi.push(Math.max(r.hi[i], r.hi[j])); lo.push(Math.min(r.lo[i], r.lo[j]));
-        }
-        r.p = p; r.hi = hi; r.lo = lo; r.every *= 2;
-      }
+      if (r.p.length > RUN_MAX) halve(r);
     } else {
       r.p[L] = live;
       if (live > r.hi[L]) r.hi[L] = live;
