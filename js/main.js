@@ -26,9 +26,12 @@ window.TC = window.TC || {};
     TC.achievements.init();
     TC.rivals.init();
     TC.leaderboard.init();
+    if (TC.race.on()) TC.race.init(goPublic);
     TC.events.on("private", () => newRun(false));
     const before = TC.state.data.basePrice;
-    if (!TC.state.data.listed) TC.ipo.show();
+    // Race mode has its own lobby (race.js) and no offline earnings
+    if (TC.race.on()) { /* race.js shows the lobby or resumes the race */ }
+    else if (!TC.state.data.listed) TC.ipo.show();
     else if (!hotData || !hotData.state) TC.offline.check();
 
     // Coming back: draw a believable recent history instead of a flat line.
@@ -221,7 +224,7 @@ window.TC = window.TC || {};
     });
 
     document.addEventListener("keydown", (e) => {
-      if (e.code !== "Space" || e.repeat || TC.ipo.visible() || TC.offline.visible()) return;
+      if (e.code !== "Space" || e.repeat || TC.ipo.visible() || TC.offline.visible() || !TC.state.data.listed) return;
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLButtonElement) return;
       e.preventDefault();
       TC.market.buy();

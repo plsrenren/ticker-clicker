@@ -32,7 +32,7 @@ TC.leaderboard = (() => {
 
   // body: { cap?, secs?, sym? }. The server takes one submit per player every few seconds, so retry once on 429.
   function submit(body, retry = true) {
-    if (!online) return Promise.resolve(false);
+    if (!online || (TC.mode && TC.mode.race)) return Promise.resolve(false); // race runs don't count
     return fetch(API, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -130,5 +130,6 @@ TC.leaderboard = (() => {
       setInterval(maybeSendCap, 20000);
     },
     load,
+    playerId,
   };
 })();

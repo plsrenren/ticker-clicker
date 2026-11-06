@@ -64,6 +64,7 @@ TC.seasons = (() => {
   let pendingFlip = null; // { id, at }
   function outcome(kind) {
     if (!id || pendingFlip || id === "frenzy") return; // a frenzy burns out on its own
+    if (TC.race && TC.race.on()) return; // races share one market timeline
     const s = st();
     if (s.clock - enteredAt < FLIP.minAge) return;
     const good = FLIP.good[kind], bad = FLIP.bad[kind];
@@ -89,12 +90,29 @@ TC.seasons = (() => {
   const cur = () => SEASONS[id] || SEASONS.side;
 
   const FRENZY_CHANCE = 0.12; // chance a bull or flat market hands over to a frenzy
-  function pickNext() {
-    if ((id === "bull" || id === "side") && Math.random() < FRENZY_CHANCE) return "frenzy";
-    if (id === "frenzy") { const r = Math.random(); return r < 0.5 ? "bear" : r < 0.8 ? "side" : "bull"; }
-    if (id === "bull") return Math.random() < 0.75 ? "bear" : "side";
-    if (id === "bear") return Math.random() < 0.75 ? "bull" : "side";
-    return Math.random() < 0.5 ? "bull" : "bear";
+  function pickNext(from = id, rnd = Math.random) {
+    if ((from === "bull" || from === "side") && rnd() < FRENZY_CHANCE) return "frenzy";
+    if (from === "frenzy") { const r = rnd(); return r < 0.5 ? "bear" : r < 0.8 ? "side" : "bull"; }
+    if (from === "bull") return rnd() < 0.75 ? "bear" : "side";
+    if (from === "bear") return rnd() < 0.75 ? "bull" : "side";
+    return rnd() < 0.5 ? "bull" : "bear";
+  }
+
+  // Race mode: one market for everyone. The seasons follow a timeline built from the race seed and the
+  // race clock (not each player's price or news), so every player is in the same season at the same moment.
+  const RACE_FIRST = 30; // seconds into the race before the first bull
+  let raceLine = null;   // [{ id, at, until }]
+  function raceSeason(t) {
+    if (t < RACE_FIRST) return null;
+    const rnd = () => TC.rng.r("season");
+    if (!raceLine) raceLine = [{ id: "bull", at: RACE_FIRST, until: RACE_FIRST + SEASONS.bull.dur[0] + rnd() * (SEASONS.bull.dur[1] - SEASONS.bull.dur[0]) }];
+    let last = raceLine[raceLine.length - 1];
+    while (last.until <= t) {
+      const nid = pickNext(last.id, rnd), d = SEASONS[nid].dur;
+      last = { id: nid, at: last.until, until: last.until + d[0] + rnd() * (d[1] - d[0]) };
+      raceLine.push(last);
+    }
+    return raceLine.find((x) => t >= x.at && t < x.until) || last;
   }
 
   function enter(newId, cause) {
@@ -154,10 +172,10 @@ TC.seasons = (() => {
     },
     // Weighted random news type for this season
     pickNews(types) {
-      if (!id) return types[Math.floor(Math.random() * types.length)];
+      if (!id) return types[Math.floor(TC.rng.r("newsPick") * types.length)];
       const w = cur().news;
       const total = types.reduce((sum, t) => sum + (w[t] ?? 1), 0);
-      let r = Math.random() * total;
+      let r = TC.rng.r("newsPick") * total;
       for (const t of types) { r -= w[t] ?? 1; if (r <= 0) return t; }
       return types[types.length - 1];
     },
@@ -170,7 +188,7 @@ TC.seasons = (() => {
     init() {
       TC.events.on("news", (e) => outcome(e.type));
       TC.events.on("newsEnd", (e) => { if (e.type === "headline") outcome(e.saved >= 0.6 ? "headlineSaved" : e.saved < 0.2 ? "headlineLost" : ""); });
-      TC.events.on("reset", () => { pendingFlip = null; id = null; shock = null; delete document.documentElement.dataset.season; render(); });
+      TC.events.on("reset", () => { raceLine = null; pendingFlip = null; id = null; shock = null; delete document.documentElement.dataset.season; render(); });
       TC.events.on("sell", (e) => {
         if (id === "bear" && e.manual && Math.random() < BACKFIRE.sell) backfire(-rand(0.1, 0.2), 1.5, "PANIC SELLING");
       });
@@ -191,6 +209,12 @@ TC.seasons = (() => {
     update(dt) {
       const s = st();
       if (!s.listed) return;
+      if (TC.race && TC.race.live()) {
+        const want = raceSeason(TC.race.elapsed());
+        if (want && want.id !== id) { enter(want.id); left = want.until - TC.race.elapsed(); }
+        if (!want) { render(); return; }
+        persist();
+      } else {
       if (!id && restore()) { render(); return; }
       if (!id) {
         if (s.basePrice >= MIN_PRICE) { enter("bull"); persist(); }
@@ -202,6 +226,7 @@ TC.seasons = (() => {
       left -= dt;
       if (left <= 0) enter(next);
       persist();
+      }
       if (shock) {
         shock.t += dt;
         const p = Math.min(1, shock.t / shock.d);
