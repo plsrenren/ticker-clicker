@@ -18,6 +18,7 @@ TC.chart = (() => {
   let yMax = 10;            // animated top of the y-axis
   let yMin = 0;             // animated bottom of the y-axis (the current price sits near the middle)
   let tagFlash = { kind: "up", t: 0 };
+  let glowT = 0;            // extra line glow after a new all-time high (seconds left)
   const pad = { l: 10, r: 66, t: 18, b: 26 };
   const MAX = cfg.historyMax || cfg.historyPoints;
   let span = cfg.historyPoints; // visible samples (zoom level)
@@ -186,6 +187,7 @@ TC.chart = (() => {
       yMin += (tMin - yMin) * Math.min(1, kMin * dt);
 
       if (tagFlash.t > 0) tagFlash.t -= dt;
+      if (glowT > 0) glowT -= dt;
 
       // Screen points for this frame (smooth scroll between samples; newest point pinned to "now").
       const shift = sinceSample / cfg.sampleMs;
@@ -201,6 +203,7 @@ TC.chart = (() => {
     setPad(p) { Object.assign(pad, p); },
     bounds: () => ({ l: pad.l, r: w - pad.r, t: pad.t, b: h - pad.b, w, h }),
     flash(kind) { tagFlash = { kind, t: 0.35 }; },
+    glow(secs = 1.2) { glowT = secs; },
 
     draw() {
       ctx.clearRect(0, 0, w, h);
@@ -259,9 +262,10 @@ TC.chart = (() => {
       ctx.lineJoin = "round";
       ctx.lineCap = "round";
       ctx.shadowColor = C.line;
-      ctx.shadowBlur = 16;
-      ctx.strokeStyle = C.line + "aa";
-      ctx.lineWidth = 3;
+      const boost = Math.max(0, glowT) / 1.2;
+      ctx.shadowBlur = 16 + boost * 22;
+      ctx.strokeStyle = boost > 0 ? C.line : C.line + "aa";
+      ctx.lineWidth = 3 + boost * 2.5;
       strokeLine();
       ctx.shadowBlur = 0;
       ctx.strokeStyle = C.core;

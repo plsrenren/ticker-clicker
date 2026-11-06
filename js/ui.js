@@ -150,6 +150,48 @@ TC.ui = (() => {
     TC.state.save();
   }
 
+  // Rolling numbers: digits slide like an odometer when a header number changes, and a move of
+  // 0.5%+ flashes the number green (up) or red (down). Rebuilds when the shape of the text changes.
+  function makeRoll(el) {
+    el.classList.add("roll");
+    let prevText = "", flashedAt = null, flashT = 0;
+    return (text, value) => {
+      if (text === prevText) return;
+      const shape = (s) => s.replace(/\d/g, "0");
+      if (!prevText || shape(text) !== shape(prevText)) {
+        el.textContent = "";
+        for (const c of text) {
+          const box = document.createElement("span");
+          box.setAttribute("aria-hidden", "true");
+          if (/\d/.test(c)) {
+            box.className = "roll-d";
+            const strip = document.createElement("span");
+            strip.className = "roll-s";
+            for (let d = 0; d <= 9; d++) { const n = document.createElement("span"); n.textContent = d; strip.appendChild(n); }
+            box.appendChild(strip);
+          } else { box.className = "roll-c"; box.textContent = c; }
+          el.appendChild(box);
+        }
+      }
+      el.setAttribute("aria-label", text);
+      const strips = el.querySelectorAll(".roll-s");
+      let i = 0;
+      for (const c of text) if (/\d/.test(c)) strips[i++].style.transform = "translateY(" + (-c * 1.1).toFixed(2) + "em)";
+      if (flashedAt == null) flashedAt = value;
+      else if (Math.abs(value / (flashedAt || 1) - 1) >= 0.005) {
+        el.classList.remove("roll-up", "roll-down");
+        void el.offsetWidth;
+        el.classList.add(value > flashedAt ? "roll-up" : "roll-down");
+        clearTimeout(flashT);
+        flashT = setTimeout(() => el.classList.remove("roll-up", "roll-down"), 220);
+        flashedAt = value;
+      }
+      prevText = text;
+    };
+  }
+  let rollCap, rollPx, rollCash;
+  function initRolls() { if (!rollCap) { rollCap = makeRoll($("price")); rollPx = makeRoll($("sharePrice")); rollCash = makeRoll($("cash")); } }
+
   function setDesk(open) {
     $("desk").classList.toggle("open", open);
     $("scrim").hidden = !open;
@@ -302,9 +344,10 @@ TC.ui = (() => {
     frame(dt, quote) {
       if (flashTimer > 0 && (flashTimer -= dt) <= 0) $("price").classList.remove("tick-up", "tick-down");
 
-      $("price").textContent = f.money(TC.market.marketCap(quote));
+      initRolls();
+      rollCap(f.money(TC.market.marketCap(quote)), quote);
       $("stakeLine").textContent = "Your stake " + (TC.market.stakePct() * 100).toFixed(1) + "% · " + f.money(TC.market.stakeValue(quote));
-      $("sharePrice").textContent = f.money(TC.market.px(quote));
+      rollPx(f.money(TC.market.px(quote)), quote);
       const open = st().dayOpen;
       const diff = quote - open;
       const ch = $("change");
@@ -315,7 +358,8 @@ TC.ui = (() => {
     },
 
     refresh(force) {
-      $("cash").textContent = f.money(st().cash);
+      initRolls();
+      rollCash(f.money(st().cash), st().cash);
       $("income").textContent = f.money(TC.market.income()) + "/s";
       $("perClick").textContent = "+" + f.money(TC.market.px(TC.market.perClick()));
       $("perSec").textContent = "+" + f.money(TC.market.px(TC.market.perSecond())) + "/s";

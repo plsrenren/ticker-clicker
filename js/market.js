@@ -26,6 +26,7 @@ TC.market = (() => {
   }
   let earnRate = 0;
   let algoT = 1;       // Algo Buyback Desk check timer
+  let athLow = Infinity, athAt = -99; // lowest price since the last record, and when the last ATH fired
   let marginPeak = 0, marginReadyAt = 0; // Margin Account: recent high (decays ~0.8%/s) and call cooldown
 
   function upgradeProduct(kind) {
@@ -165,6 +166,12 @@ TC.market = (() => {
           s.shares = Math.max(cfg.stake.floor, s.shares - sold);
         }
         earnedAcc += earned;
+        // New all-time high: only after a real pullback (5%+ below the record) and at most every 15s
+        if (athLow <= s.bestPrice * 0.95 && s.clock - athAt >= 15 && s.bestPrice >= 5) {
+          athAt = s.clock;
+          TC.events.emit("ath", { price: s.basePrice, from: athLow });
+        }
+        athLow = s.basePrice;
         s.bestPrice = s.basePrice;
       }
       if (s.basePrice > s.lifetime.bestPrice) s.lifetime.bestPrice = s.basePrice;
@@ -181,7 +188,8 @@ TC.market = (() => {
       // Bear-market overtrading: halts swallow the tap, sell walls flip it into a drop
       const ot = TC.overtrade ? TC.overtrade.tap() : "ok";
       if (ot === "halt") { TC.events.emit("halted", { x, y }); return; }
-      const amount = api.perClick();
+      const lucky = Math.random() < cfg.news.luckyChance;
+      const amount = api.perClick() * (lucky ? cfg.news.luckyMult : 1);
       if (ot === "wall") {
         st().basePrice = Math.max(0.01, st().basePrice - amount);
         TC.events.emit("sellWall", { amount, x, y });
@@ -192,7 +200,7 @@ TC.market = (() => {
       st().orders++;
       st().lifetime.taps++;
       wobble = Math.abs(wobble) * 0.5; // a buy kicks noise upward
-      TC.events.emit("buy", { amount, x, y, manual: true });
+      TC.events.emit("buy", { amount, x, y, manual: true, lucky });
     },
 
     // Secondary offering: cash now, price drops by cfg.sell.drop.
@@ -302,6 +310,7 @@ TC.market = (() => {
           TC.events.emit("order", { amount, id: g.id, name: g.name });
         }
       }
+      if (s.basePrice < athLow) athLow = s.basePrice;
       // Margin call: owning Margin Account means a sharp drop forces a dump
       if (s.upgrades.margin && s.basePrice > 0) {
         marginPeak = Math.max(s.basePrice, marginPeak * (1 - 0.008 * dt));
