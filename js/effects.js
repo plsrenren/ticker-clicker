@@ -633,6 +633,12 @@ TC.effects = (() => {
       api.spawn("floatText", { x: w / 2 - 30, y: h * 0.45, text: name.toUpperCase() + " IN 15s", color, size: 20, life: 1.8 });
     });
 
+    TC.events.on("passed", ({ syms, rank }) => {
+      const tip = TC.chart.tip();
+      const text = "PASSED $" + syms[syms.length - 1] + (syms.length > 1 ? " +" + (syms.length - 1) : "") + " · #" + rank;
+      api.spawn("floatText", { x: w / 2, y: h * 0.34, text, color: C.up, size: 20, life: 1.8 });
+      api.spawn("ring", { x: tip.x, y: tip.y, color: C.up, max: 110, life: 0.7 });
+    });
     TC.events.on("chain", ({ depth }) => {
       api.spawn("floatText", { x: w / 2 - 60, y: h * 0.38, text: depth > 1 ? "CHAIN REACTION x" + (depth + 1) : "CHAIN REACTION", color: FRENZY, size: 22, life: 1.6 });
       api.spawn("pulse", { color: FRENZY, speed: 260, width: 30, life: 1, strength: 1.2 });

@@ -70,8 +70,13 @@ TC.ui = (() => {
         shownLocked = true;
         r.btn.classList.add("locked");
         r.btn.disabled = true;
-        r.name.textContent = "???";
-        r.desc.textContent = "Reach " + f.money(TC.market.marketCap(it.reveal * 0.3)) + " market cap";
+        // Blurred name that sharpens as you approach the reveal price
+        const near = Math.min(1, st().bestPrice / (it.reveal * 0.3));
+        r.name.textContent = it.name;
+        r.name.style.filter = "blur(" + (6 * (1 - near) + 2.5).toFixed(1) + "px)";
+        r.name.setAttribute("aria-label", "Locked");
+        r.desc.textContent = "Reach " + f.money(TC.market.marketCap(it.reveal * 0.3)) + " cap · " + Math.floor(near * 100) + "%";
+        r.li.style.setProperty("--near", near.toFixed(3));
         r.cost.textContent = "";
         r.count.textContent = "";
         continue;
@@ -79,6 +84,8 @@ TC.ui = (() => {
 
       r.li.hidden = false;
       r.btn.classList.remove("locked");
+      r.name.style.filter = "";
+      r.name.removeAttribute("aria-label");
       r.name.textContent = it.name;
       if (kind === "generator") {
         const sm = (TC.seasons ? TC.seasons.genMult(it.id) : 1) * (TC.debuffs ? TC.debuffs.genMult(it.id) : 1);
@@ -154,9 +161,13 @@ TC.ui = (() => {
   // 0.5%+ flashes the number green (up) or red (down). Rebuilds when the shape of the text changes.
   function makeRoll(el) {
     el.classList.add("roll");
-    let prevText = "", flashedAt = null, flashT = 0;
+    let prevText = "", flashedAt = null, flashT = 0, lastAt = 0;
     return (text, value) => {
       if (text === prevText) return;
+      // At most ~5 rolls a second, so a jittery last digit settles instead of blurring
+      const now = performance.now();
+      if (prevText && now - lastAt < 200) return;
+      lastAt = now;
       const shape = (s) => s.replace(/\d/g, "0");
       if (!prevText || shape(text) !== shape(prevText)) {
         el.textContent = "";
@@ -258,6 +269,10 @@ TC.ui = (() => {
     // Log scale so early progress is visible: $1 -> 0%, $1M -> 100%
     const prog = Math.max(0, Math.min(1, Math.log10(Math.max(1, s.bestPrice)) / Math.log10(pc.minPrice)));
     $("privateFill").style.width = (prog * 100).toFixed(1) + "%";
+    // From 80% the bar starts to beat, faster as you close in (1.6s per beat at 80%, 0.35s at 100%)
+    const card = $("privateCard"), near = !unlocked && prog >= 0.8;
+    card.classList.toggle("near", near);
+    if (near) card.style.setProperty("--beat", (1.6 - (prog - 0.8) / 0.2 * 1.25).toFixed(2) + "s");
     $("privatePts").textContent = unlocked
       ? f.int(s.prestige.points) + " pts · " + bonus(s.prestige.points)
       : f.axis(TC.market.marketCap(s.bestPrice)) + " / " + f.axis(TC.market.marketCap(pc.minPrice)) + " cap";

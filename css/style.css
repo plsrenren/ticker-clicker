@@ -57,7 +57,7 @@ body {
 .rv { padding: 6px 14px; font-size: 11px; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; color: var(--muted); }
 .rv[data-dir="up"] { color: color-mix(in srgb, var(--up) 80%, var(--muted)); }
 .rv[data-dir="down"] { color: color-mix(in srgb, var(--down) 85%, var(--muted)); }
-.rv-you { color: var(--text) !important; font-weight: 600; }
+.rv-you { color: var(--up) !important; font-weight: 600; background: color-mix(in srgb, var(--up) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--up) 55%, transparent); border-radius: 8px; margin-block: 3px; padding-block: 3px; }
 
 /* ---------- Quote tape ---------- */
 .tape {
@@ -287,7 +287,7 @@ body {
 .roll { display: inline-flex; align-items: flex-start; line-height: 1.1em; height: 1.1em; vertical-align: bottom; }
 .roll-c { display: inline-block; height: 1.1em; line-height: 1.1em; }
 .roll-d { display: inline-block; height: 1.1em; overflow: hidden; }
-.roll-s { display: flex; flex-direction: column; transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.25, 1.12); }
+.roll-s { display: flex; flex-direction: column; transition: transform 0.22s cubic-bezier(0.2, 0.9, 0.25, 1.1); }
 .roll-s > span { display: block; height: 1.1em; line-height: 1.1em; text-align: center; }
 .roll.roll-up { color: var(--up); text-shadow: 0 0 16px color-mix(in srgb, var(--up) 55%, transparent); }
 .roll.roll-down { color: var(--down); text-shadow: 0 0 16px color-mix(in srgb, var(--down) 55%, transparent); }
@@ -763,6 +763,11 @@ body {
 .private-bar { flex: 1; height: 4px; border-radius: 2px; background: var(--rule); overflow: hidden; }
 .private-bar i { display: block; height: 100%; width: 0; background: var(--line); transition: width 0.4s ease; }
 .private-card .private-pts { white-space: nowrap; }
+.private-card.near { border-color: color-mix(in srgb, var(--line) 60%, transparent); animation: private-beat var(--beat, 1.4s) ease-in-out infinite; }
+.private-card.near .private-bar i { animation: private-fill var(--beat, 1.4s) ease-in-out infinite; box-shadow: 0 0 8px var(--line); }
+@keyframes private-beat { 50% { box-shadow: 0 0 20px color-mix(in srgb, var(--line) 40%, transparent); } }
+@keyframes private-fill { 50% { filter: brightness(1.7); } }
+@media (prefers-reduced-motion: reduce) { .private-card.near, .private-card.near .private-bar i { animation: none; } }
 .private-card.ready { border-color: color-mix(in srgb, var(--core) 50%, transparent); }
 .private-card.ready .private-bar i { background: var(--core); }
 
