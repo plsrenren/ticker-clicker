@@ -130,6 +130,27 @@ TC.flavor = (() => {
     opexDown: ["Puts pay out. {you} drops off the pin. {pct}", "Pin breaks down: {you} {pct}", "Max pain wins. {you} {pct}"],
     gamma: ["Gamma squeeze! Dealers forced to buy {you}. {pct}", "Second leg: options dealers chase {you} {pct}", "Calls go in the money, dealers panic-buy {you}. {pct}"],
 
+    rug: [
+      "Is {you} about to rug? Holders are nervous",
+      "Anon account claims {you} devs are packing their bags",
+      "\"{you} is a rug\" trends for no clear reason",
+      "Someone noticed {you}'s founder changed their bio to \"retired\"",
+      "Rumor: {you} insiders moving shares to a new wallet",
+    ],
+    rugSmall: [
+      "A guy in a group chat says {you} is a rug",
+      "{you}'s founder hasn't posted in 3 hours. Holders panic",
+      "Reply guy: \"{you} rug incoming, trust me\"",
+    ],
+    rugBig: [
+      "Short seller report: \"{you} is the biggest rug in market history\"",
+      "Regulators asked about {you} rug rumors on live TV",
+      "Rug rumors about {you} spread to three continents",
+    ],
+    rugDebunked: ["Founder posts proof of life. {you} {pct}", "Rumor debunked: {you} still here, {pct}", "Holders hold the line. {you} {pct}"],
+    rugSqueeze: ["No rug! Bears forced to cover {you}. {pct}", "Rug bets go to zero, {you} squeezes {pct}", "Shorts burned on the rug rumor: {you} {pct}"],
+    rugPanic: ["Holders rug themselves. {you} {pct}", "Panic sale: everyone exits {you} at once. {pct}", "Rumor becomes self-fulfilling. {you} {pct}"],
+
     hack: [
       "{you} hacked: attackers are dumping shares from stolen accounts",
       "Hackers inside {you}'s trading systems",

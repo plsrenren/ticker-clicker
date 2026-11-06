@@ -78,7 +78,8 @@ TC.config = {
     splitTaps: 30,       // taps in 6s to push a stock split through (only offered above a $1,000 share price)
     opexTaps: 0.065,     // options expiry: pressure each tap adds (sellers pull it down 0.2/s, so about 3 taps/s holds it)
     gammaTaps: 14,       // taps in 4s after a short squeeze to set off the gamma squeeze leg
-    hackTaps: 22,        // taps to patch a hack before it drains the price (6s)
+    hackTaps: 22,
+    rugTaps: 18,         // taps to calm holders during a rug rumor (6s)        // taps to patch a hack before it drains the price (6s)
     breachTaps: 26,      // taps after a data breach to win back 70% of the drop (6s)
     exploitTaps: 20,     // taps to ship a patch before a zero-day goes public (5s)
     splitChance: 0.35,

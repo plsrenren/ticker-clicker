@@ -39,7 +39,7 @@ TC.news = (() => {
   let splitBoostUntil = -1; // stock split: buyers 1.5x
   const rival = (avoid) => TC.rivals.pick(avoid);
   // Rival headlines are picked separately from the classic ones (see trigger), weighted by season.
-  const CLASSIC = ["headline", "flash", "short", "earnings", "pump", "opex", "cyber"];
+  const CLASSIC = ["headline", "flash", "short", "earnings", "pump", "opex", "cyber", "rug"];
   const taps = (n) => Math.round(n * (TC.market.has("intel") ? 0.8 : 1));
   const RIVAL_W = {
     bull: { takeover: 3, rivalScandal: 2, partner: 2, copycat: 1, hostile: 1, sector: 0.3, poach: 1 },
@@ -263,6 +263,49 @@ TC.news = (() => {
             return true;
           }
           return t < T + 2.2;
+        },
+      };
+    },
+
+    // Rug rumor (neutral): "is $YOU about to rug?" Holders get jumpy for 6s while the price shakes.
+    // Tap enough to calm them and the rumor is debunked (small pop). Ride it out and it's a coin flip:
+    // shorts who bet on the rug get burned (squeeze up) or holders panic and dump (big drop).
+    rug() {
+      const T = 6, need = taps(cfg.news.rugTaps);
+      let t = 0, n = 0, acc = 0, resolved = false;
+      return {
+        start() {
+          banner.show({ tag: "RUG RUMOR", tone: "neutral", text: L("rug"), sub: "Tap " + need + " times to calm holders", meter: { a: 0, b: 0 } });
+          TC.events.emit("news", { type: "rug", tone: "neutral" });
+        },
+        onTap() { if (!resolved) n++; },
+        update(dt) {
+          t += dt;
+          if (resolved) return t < 2.2;
+          if ((acc += dt) >= 0.35) { acc = 0; TC.market.shift(rand(-0.025, 0.02), "rug"); } // nervous chop
+          banner.meter(t / T, n / need);
+          banner.sub(Math.max(0, need - n) + " taps to calm holders · " + Math.max(0, T - t).toFixed(1) + "s");
+          if (n >= need) {
+            resolved = true; t = 0;
+            const up = mag(0.05, 0.1);
+            banner.show({ tag: "RUMOR DEBUNKED", tone: "up", text: L("rugDebunked", { pct: pct(up) }), sub: "" });
+            TC.events.emit("news", { type: "rugDebunked", tone: "up" });
+            TC.market.shift(up, "rug");
+          } else if (t >= T) {
+            resolved = true; t = 0;
+            if (Math.random() < 0.5) {
+              const up = mag(0.1, 0.2);
+              banner.show({ tag: "SHORTS BURNED", tone: "up", text: L("rugSqueeze", { pct: pct(up) }), sub: "No rug. The bears were wrong" });
+              TC.events.emit("news", { type: "rugSqueeze", tone: "up", big: true });
+              TC.market.shift(up, "rug");
+            } else {
+              const down = mag(0.15, 0.28);
+              banner.show({ tag: "HOLDERS PANIC", tone: "down", text: L("rugPanic", { pct: pct(-down) }), sub: "Everyone ran for the exit at once" });
+              TC.events.emit("news", { type: "rugPanic", tone: "down", big: true });
+              TC.market.shift(-down, "rug");
+            }
+          }
+          return true;
         },
       };
     },
@@ -691,6 +734,8 @@ TC.news = (() => {
     opexUp: ["pump", 0.25],
     exploitWin: ["partner", 0.25],  // a rival trusts your security
     breachWin: ["exploit", 0.2],    // a researcher pokes at the new defences
+    rugPanic: ["short", 0.35],      // shorts pile onto the panic
+    rugSqueeze: ["pump", 0.3],      // influencers dunk on the bears
   };
   const CHAIN_MAX = 2, CHAIN_DELAY = 1.8;
   let lastOutcome = null, chainDepth = 0, chain = null; // chain = { name, at }

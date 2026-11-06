@@ -216,6 +216,8 @@ body {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.1em;
+  white-space: nowrap;
+  flex: none;
   animation: blink 0.8s steps(2, start) infinite;
 }
 @keyframes blink { to { opacity: 0.55; } }
