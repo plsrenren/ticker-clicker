@@ -130,6 +130,42 @@ TC.flavor = (() => {
     opexDown: ["Puts pay out. {you} drops off the pin. {pct}", "Pin breaks down: {you} {pct}", "Max pain wins. {you} {pct}"],
     gamma: ["Gamma squeeze! Dealers forced to buy {you}. {pct}", "Second leg: options dealers chase {you} {pct}", "Calls go in the money, dealers panic-buy {you}. {pct}"],
 
+    whaleBuy: [
+      "Whale alert: a mystery wallet is sweeping {you}",
+      "Unknown buyer just took every {you} sell order",
+      "Someone is loading up on {you}. Heavily",
+      "Block trade: a single buyer grabs a mountain of {you}",
+    ],
+    whaleBuySmall: [
+      "A guy with an inheritance just went all in on {you}",
+      "A dentist from Ohio is buying all the {you}",
+      "Mystery buyer takes half of {you}'s order book. All $40K of it",
+    ],
+    whaleBuyBig: [
+      "Sovereign wealth fund quietly builds a huge {you} stake",
+      "A trillion-dollar fund is buying {you} in size",
+      "Famous billionaire's family office piles into {you}",
+    ],
+    whaleBuyDone: ["The whale is done buying. {you} {pct}", "Order book swept clean. {you} {pct}", "13F filing coming: {you} {pct} on whale buying"],
+    whaleDump: [
+      "Whale alert: a huge holder is dumping {you}",
+      "One wallet is unloading {you} into every bid",
+      "Block sale: a whale wants out of {you}",
+      "Top holder is selling {you}. All of it",
+    ],
+    whaleDumpSmall: [
+      "{you}'s biggest holder needs money for a boat",
+      "Early investor dumps {you} to pay for a wedding",
+      "The founder's uncle is selling his {you}",
+    ],
+    whaleDumpBig: [
+      "A megafund is liquidating its entire {you} stake",
+      "Billionaire dumps {you} live on TV",
+      "Pension giant cuts {you} from its portfolio",
+    ],
+    whaleAbsorbed: ["Buyers soak up the whale. {you} holds at {pct}", "Every share taken. {you} bottoms at {pct}", "Whale gone, bid still standing. {you} {pct}"],
+    whaleDumped: ["The whale is out. {you} {pct}", "Nobody caught it. {you} {pct}", "Whale exit complete: {you} {pct}"],
+
     rug: [
       "Is {you} about to rug? Holders are nervous",
       "Anon account claims {you} devs are packing their bags",

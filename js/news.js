@@ -39,7 +39,7 @@ TC.news = (() => {
   let splitBoostUntil = -1; // stock split: buyers 1.5x
   const rival = (avoid) => TC.rivals.pick(avoid);
   // Rival headlines are picked separately from the classic ones (see trigger), weighted by season.
-  const CLASSIC = ["headline", "flash", "short", "earnings", "pump", "opex", "cyber", "rug"];
+  const CLASSIC = ["headline", "flash", "short", "earnings", "pump", "opex", "cyber", "rug", "whale"];
   const taps = (n) => Math.round(n * (TC.market.has("intel") ? 0.8 : 1));
   const RIVAL_W = {
     bull: { takeover: 3, rivalScandal: 2, partner: 2, copycat: 1, hostile: 1, sector: 0.3, poach: 1 },
@@ -263,6 +263,84 @@ TC.news = (() => {
             return true;
           }
           return t < T + 2.2;
+        },
+      };
+    },
+
+    // ---- Whales: one big holder moves the price. Bull markets lean to buying, bears to dumping ----
+    whale(opts) {
+      const season = TC.seasons && TC.seasons.current();
+      const dumpOdds = season === "bear" ? 0.7 : season === "bull" || season === "frenzy" ? 0.3 : 0.5;
+      return types[Math.random() < dumpOdds ? "whaleDump" : "whaleBuy"](opts);
+    },
+
+    // Whale buy (good): a mystery buyer sweeps the order book in 6 big orders over 4s.
+    // Tap along to follow the whale: every tap in the window adds 1% more to the total, up to +50%.
+    whaleBuy() {
+      const T = 4, CHUNKS = 6;
+      const total = mag(0.14, 0.26);
+      let t = 0, done = 0, taps = 0, resolved = false;
+      return {
+        start() {
+          banner.show({ tag: "WHALE SPOTTED", tone: "up", text: L("whaleBuy"), sub: "Tap to follow the whale in" });
+          TC.events.emit("news", { type: "whaleBuy", tone: "up" });
+        },
+        onTap() { if (!resolved) taps++; },
+        update(dt) {
+          t += dt;
+          if (resolved) return t < 2.2;
+          const bonus = 1 + Math.min(0.5, taps * 0.01);
+          while (done < CHUNKS && t >= (done + 1) * (T / CHUNKS)) {
+            done++;
+            TC.market.shift(Math.pow(1 + total * bonus, 1 / CHUNKS) - 1, "whale");
+          }
+          banner.sub("Followers +" + Math.round((bonus - 1) * 100) + "% · " + Math.max(0, T - t).toFixed(1) + "s");
+          if (done >= CHUNKS) {
+            resolved = true; t = 0;
+            banner.show({ tag: "WHALE LOADED UP", tone: "up", text: L("whaleBuyDone", { pct: pct(total * bonus) }), sub: taps ? "Your taps added +" + Math.round((bonus - 1) * 100) + "%" : "" });
+            TC.events.emit("news", { type: "whaleBought", tone: "up", big: true });
+          }
+          return true;
+        },
+      };
+    },
+
+    // Whale dump (bad): a whale sells for 6s. Tap enough to absorb the sell orders and the dump stops,
+    // and a third of the drop comes back as the market sees the bid hold. Otherwise the whale exits in full.
+    whaleDump() {
+      const T = 6, need = taps(cfg.news.whaleTaps);
+      const total = mag(0.22, 0.36);
+      const rate = Math.pow(1 - total, 1 / T);
+      let t = 0, n = 0, lost = 0, resolved = false, acc = 0;
+      return {
+        start() {
+          banner.show({ tag: "WHALE ALERT", tone: "down", text: L("whaleDump"), sub: "Tap " + need + " times to absorb it", meter: { a: 0, b: 0 } });
+          TC.events.emit("news", { type: "whaleDump", tone: "down" });
+        },
+        onTap() { if (!resolved) n++; },
+        update(dt) {
+          t += dt;
+          if (resolved) return t < 2.2;
+          if ((acc += dt) >= 0.1) {
+            const f = Math.pow(rate, acc) - 1;
+            lost = 1 - (1 - lost) * (1 + f);
+            TC.market.shift(f, "whale");
+            acc = 0;
+          }
+          banner.meter(lost / total, n / need);
+          banner.sub(Math.max(0, need - n) + " taps to absorb · " + Math.max(0, T - t).toFixed(1) + "s");
+          if (n >= need) {
+            resolved = true; t = 0;
+            const back = lost / (1 - lost) / 3;
+            banner.show({ tag: "WHALE ABSORBED", tone: "up", text: L("whaleAbsorbed", { pct: pct(-lost) }), sub: "The bid held: a third of the drop comes back" });
+            TC.events.emit("news", { type: "whaleAbsorbed", tone: "up" });
+            TC.market.shift(back, "whale");
+          } else if (t >= T) {
+            resolved = true; t = 0;
+            banner.show({ tag: "WHALE EXITS", tone: "down", text: L("whaleDumped", { pct: pct(-lost) }), sub: "" });
+            TC.events.emit("news", { type: "whaleDumped", tone: "down", big: true });
+          }
+          return true;
         },
       };
     },
@@ -735,6 +813,8 @@ TC.news = (() => {
     opexUp: ["pump", 0.25],
     exploitWin: ["partner", 0.25],  // a rival trusts your security
     breachWin: ["exploit", 0.2],    // a researcher pokes at the new defences
+    whaleDumped: ["flash", 0.3],    // the dump sets off stop losses
+    whaleBought: ["pump", 0.3],     // influencers spot the whale
     rugPanic: ["short", 0.35],      // shorts pile onto the panic
     rugSqueeze: ["pump", 0.3],      // influencers dunk on the bears
   };

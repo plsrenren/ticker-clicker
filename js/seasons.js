@@ -55,8 +55,8 @@ TC.seasons = (() => {
   // Event outcomes can flip the market mood. A good outcome can end a bear (or lift a flat market into a bull),
   // a bad one can end a bull (or sink a flat market into a bear). Chance per outcome type:
   const FLIP = {
-    good: { exploitWin: 0.1, breachWin: 0.1, gamma: 0.3, opexUp: 0.15, rugSqueeze: 0.15, squeeze: 0.3, beat: 0.2, splitWin: 0.25, index: 0.35, headlineSaved: 0.15 },
-    bad: { hacked: 0.2, breachLose: 0.15, exploitLose: 0.2, opexDown: 0.15, shortwin: 0.3, miss: 0.25, splitLose: 0.15, squeezedOut: 0.25, sector: 0.3, flash: 0.12, headlineLost: 0.2, rugPanic: 0.2 },
+    good: { exploitWin: 0.1, breachWin: 0.1, gamma: 0.3, opexUp: 0.15, rugSqueeze: 0.15, whaleBought: 0.15, whaleAbsorbed: 0.1, squeeze: 0.3, beat: 0.2, splitWin: 0.25, index: 0.35, headlineSaved: 0.15 },
+    bad: { hacked: 0.2, breachLose: 0.15, exploitLose: 0.2, opexDown: 0.15, shortwin: 0.3, miss: 0.25, splitLose: 0.15, squeezedOut: 0.25, sector: 0.3, flash: 0.12, headlineLost: 0.2, rugPanic: 0.2, whaleDumped: 0.2 },
     minAge: 12,   // a season must have run this long before news can flip it
     delay: 1.6,   // seconds after the outcome, so the result banner reads first
   };
