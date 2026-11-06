@@ -636,37 +636,46 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  gap: 2px;
-  min-height: 44px;
-  padding: 4px 4px;
+  gap: 3px;
+  min-height: 48px;
+  padding: 6px 8px 8px;
   background: color-mix(in srgb, var(--up) 10%, transparent);
   color: var(--up);
   border: 1px solid color-mix(in srgb, var(--up) 55%, transparent);
-  border-radius: 12px;
+  border-radius: 10px;
   font: inherit;
+  text-align: left;
   cursor: pointer;
   touch-action: manipulation;
 }
+/* Cooldown: a bar along the bottom that drains as the move comes back */
 .hype-btn::before {
   content: "";
   position: absolute;
-  inset: 0;
+  left: 0; right: 0; bottom: 0;
+  height: 3px;
   background: var(--up);
-  opacity: 0.16;
+  opacity: 0.7;
   transform-origin: left;
   transform: scaleX(var(--cd, 0));
 }
-.hype-name { position: relative; font-family: var(--font-display); font-weight: 800; font-size: 12px; line-height: 1.1; text-align: center; }
-.hype-sub { position: relative; font-size: 10px; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.hype-btn[data-state="ready"] { box-shadow: 0 0 14px color-mix(in srgb, var(--up) 35%, transparent); }
+.hype-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; width: 100%; }
+.hype-icon { display: flex; }
+.hype-ic { width: 16px; height: 16px; filter: drop-shadow(0 0 4px color-mix(in srgb, currentColor 60%, transparent)); }
+.hype-name { position: relative; font-family: var(--font-display); font-weight: 800; font-size: 12px; line-height: 1.1; }
+.hype-sub { position: relative; font-size: 9.5px; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.hype-btn[data-state="ready"] { animation: hype-breathe 1.8s ease-in-out infinite; }
+@keyframes hype-breathe { 0%, 100% { box-shadow: 0 0 10px color-mix(in srgb, var(--up) 25%, transparent); } 50% { box-shadow: 0 0 0 1px var(--up), 0 0 18px color-mix(in srgb, var(--up) 50%, transparent); } }
 .hype-btn[data-state="ready"]:active { transform: scale(0.96); }
 .hype-btn[data-state="cooling"], .hype-btn[data-state="blocked"] { color: var(--muted); border-color: var(--rule); background: transparent; cursor: default; }
+.hype-btn[data-state="cooling"] .hype-ic, .hype-btn[data-state="blocked"] .hype-ic, .hype-btn[data-state="locked"] .hype-ic { filter: none; }
 .hype-btn[data-state="locked"] { color: var(--muted); border-color: var(--rule); border-style: dashed; background: transparent; cursor: default; opacity: 0.7; }
 .hype-btn[data-state="live"] { color: var(--ink); background: var(--up); border-color: var(--up); animation: dip-pulse 0.9s ease-in-out infinite; }
+.hype-btn[data-state="live"] .hype-ic { filter: none; }
 .hype-btn:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { .hype-btn[data-state="live"] { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .hype-btn[data-state="live"], .hype-btn[data-state="ready"] { animation: none; } }
 
 /* Sound toggle: top-right corner of the chart */
 .sound-btn {

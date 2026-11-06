@@ -56,6 +56,16 @@ TC.hype = (() => {
     },
   ];
 
+  // Icons (inline SVG, drawn in currentColor so they follow each state's colour)
+  const ICONS = {
+    pr: '<path d="M3 10v4h3l7 5V5L6 10H3z" fill="currentColor"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    tweet: '<path d="M4 5h16v10H9l-5 4z" fill="currentColor"/>',
+    rumor: '<circle cx="9" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="15" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2.2"/>',
+    call: '<rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    lock: '<rect x="5" y="10" width="14" height="10" rx="2" fill="currentColor"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2"/>',
+  };
+  const svg = (id) => '<svg class="hype-ic" viewBox="0 0 24 24" aria-hidden="true">' + ICONS[id] + "</svg>";
+
   const readyAt = {};      // id -> game clock time it's ready again
   let lockedUntil = -1;    // all hype locked after a denied rumor
   // In a bear market, a press release or tweet storm has a 30% chance to blow up into a scandal
@@ -106,11 +116,11 @@ TC.hype = (() => {
         b.type = "button";
         b.className = "hype-btn";
         b.dataset.id = m.id;
-        b.innerHTML = '<span class="hype-name"></span><span class="hype-sub"></span>';
+        b.innerHTML = '<span class="hype-top"><span class="hype-icon"></span><span class="hype-sub"></span></span><span class="hype-name"></span>';
         b.querySelector(".hype-name").textContent = m.name;
         b.addEventListener("click", () => api.activate(m.id));
         bar.appendChild(b);
-        els[m.id] = { b, sub: b.querySelector(".hype-sub"), key: "" };
+        els[m.id] = { b, sub: b.querySelector(".hype-sub"), icon: b.querySelector(".hype-icon"), key: "", ic: "" };
       }
       TC.events.on("reset", () => {
         for (const k in readyAt) delete readyAt[k];
@@ -147,7 +157,11 @@ TC.hype = (() => {
         e.key = key;
         e.b.dataset.state = boostOn ? "live" : v.state;
         e.b.disabled = v.state !== "ready";
-        e.sub.textContent = v.state === "locked" ? "At " + sub : sub;
+        // Locked: the lock icon says it, so the chip just shows the cap it unlocks at
+        e.sub.textContent = v.state === "locked" ? sub.replace(" cap", "") : sub;
+        e.b.title = v.state === "locked" ? "Unlocks at " + sub : m.name;
+        const ic = v.state === "locked" ? "lock" : m.id;
+        if (ic !== e.ic) { e.ic = ic; e.icon.innerHTML = svg(ic); }
       }
     },
   };
