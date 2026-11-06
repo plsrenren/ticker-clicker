@@ -20,10 +20,21 @@ TC.ui = (() => {
     btn.innerHTML =
       '<span class="item-main"><span class="item-name"></span><span class="item-desc"></span></span>' +
       '<span class="item-count"></span><span class="item-cost"></span>';
-    btn.addEventListener("click", () => {
+    const buy = () => {
+      if (btn.disabled) return;
       if (kind === "generator") TC.market.buyGenerators(item.id, buyCount(item));
       else TC.market.buyUpgrade(item.id);
       api.refresh(true);
+    };
+    // Mouse/pen: buy on release if the pointer barely moved, even if the row shifted or re-rendered
+    // under it (a plain click is dropped when the press and release land on different elements).
+    btn.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "touch" || e.button !== 0) return; // touch keeps the normal tap, so scrolling the desk never buys
+      pressedRow = { btn, buy, x: e.clientX, y: e.clientY };
+    });
+    btn.addEventListener("click", () => {
+      if (performance.now() - firedAt < 400) return; // already bought on pointerup
+      buy();
     });
     li.appendChild(btn);
     listEl.appendChild(li);
@@ -33,6 +44,16 @@ TC.ui = (() => {
       name: main.children[0], desc: main.children[1], count: btn.children[1], cost: btn.children[2],
     };
   }
+
+  let pressedRow = null, firedAt = -1e9;
+  document.addEventListener("pointerup", (e) => {
+    const p = pressedRow;
+    pressedRow = null;
+    if (!p || Math.hypot(e.clientX - p.x, e.clientY - p.y) > 12) return;
+    firedAt = performance.now();
+    p.buy();
+  });
+  document.addEventListener("pointercancel", () => { pressedRow = null; });
 
   // x1 / x10 / Max for buyers
   const qty = () => st().settings.buyQty || "1";
