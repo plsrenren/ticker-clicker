@@ -197,7 +197,7 @@ TC.effects = (() => {
     // Firework: a burst of sparks that fan out evenly, fall and fade (new all-time highs)
     firework({ x, y, color = C.up, n = 26, speed = 170 }) {
       let t = 0;
-      const life = 1.1;
+      const life = 0.8;
       const ps = [];
       for (let i = 0; i < n; i++) {
         const a = (i / n) * Math.PI * 2 + Math.random() * 0.2, sp = speed * (0.75 + Math.random() * 0.4);
@@ -231,9 +231,9 @@ TC.effects = (() => {
         let px = x, py = y;
         const pts = [[px, py]];
         const L = len * (0.6 + Math.random() * 0.6);
-        for (let d = 0; d < L; d += 14 + Math.random() * 12) {
+        for (let d = 0; d < L; d += 8 + Math.random() * 6) {
           a += (Math.random() - 0.5) * 0.9;
-          px += Math.cos(a) * 18; py += Math.sin(a) * 18;
+          px += Math.cos(a) * 10; py += Math.sin(a) * 10;
           pts.push([px, py]);
         }
         lines.push(pts);
@@ -242,9 +242,9 @@ TC.effects = (() => {
         update(dt) { t += dt; return t < life; },
         draw(g) {
           const grow = Math.min(1, t / 0.12);
-          g.globalAlpha = t < 0.5 ? 1 : Math.max(0, 1 - (t - 0.5) / (life - 0.5));
-          g.strokeStyle = C.down; g.shadowColor = C.down; g.shadowBlur = 10;
-          g.lineWidth = 1.6; g.lineJoin = "miter";
+          g.globalAlpha = 0.8 * (t < 0.35 ? 1 : Math.max(0, 1 - (t - 0.35) / (life - 0.35)));
+          g.strokeStyle = C.down; g.shadowColor = C.down; g.shadowBlur = 5;
+          g.lineWidth = 1.1; g.lineJoin = "miter";
           for (const pts of lines) {
             const m = Math.max(2, Math.ceil(pts.length * grow));
             g.beginPath();
@@ -527,7 +527,7 @@ TC.effects = (() => {
       wrap.classList.add(tier >= 2 ? "glitch-big" : "glitch");
       clearTimeout(fireBig.gt);
       fireBig.gt = setTimeout(() => wrap.classList.remove("glitch", "glitch-big"), tier >= 2 ? 650 : 320);
-      if (tier >= 2) api.spawn("crack", { x: tip.x, y: tip.y, n: 3 + tier * 2, len: 110 + tier * 60 }, 3);
+      if (tier >= 2) api.spawn("crack", { x: tip.x, y: tip.y, n: 2 + tier, len: 40 + tier * 18 }, 1);
     }
     // Tier 1 (6%+): thick pulse, ring, small shake
     api.spawn("pulse", { color: hot, speed: 220, width: 30 + tier * 12, life: 1.3, strength: 1.3 + tier * 0.3 });
