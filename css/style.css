@@ -286,9 +286,9 @@ body {
 .desk-btn:focus-visible { outline: 2px solid var(--line); outline-offset: 3px; }
 /* One row: Trading desk on the left, SELL on the right (trading-app convention: buy left, sell right) */
 .dock .desk-btn { order: 1; flex: none; }
-.dock .sell-btn { order: 2; flex: 1 1 0; min-width: 0; max-width: 340px; margin-left: auto; align-items: flex-end; text-align: right; }
+.dock .sell-btn { order: 2; flex: 1 1 0; min-width: 0; max-width: 340px; margin-left: auto; align-items: center; text-align: center; }
 .dock .sell-btn { padding-inline: 14px; }
-.dock .sell-btn .sell-sub { font-size: 10.5px; letter-spacing: -0.01em; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dock .sell-btn .sell-sub { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Shine: a light sweep across buttons the player hasn't pressed yet (ui.js paintShine) */
 [data-shine="1"] { position: relative; overflow: hidden; isolation: isolate; }

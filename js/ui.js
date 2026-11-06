@@ -331,12 +331,14 @@ TC.ui = (() => {
       sb.classList.toggle("peak", bonus > 1 && TC.market.canSell());
       sb.classList.toggle("risky", bonus <= 1 && TC.market.canSell() && TC.market.sellingIntoCrash());
       $("sellSub").textContent =
-        st().basePrice < cfg.sell.minPrice ? "Reach " + f.money(cfg.sell.minPrice) + " to sell" :
+        st().basePrice < cfg.sell.minPrice ? "Reach " + f.money(cfg.sell.minPrice) :
         cd > 0 ? "Ready in " + Math.ceil(cd) + "s" :
-        bonus > 1 ? "PEAK " + bonus + "x size · +" + f.money(TC.market.sellValue()) :
-        TC.market.sellingIntoCrash() ? "+" + f.money(TC.market.sellValue()) + " · CRASH: price −" + Math.round(TC.market.sellDrop() * 100) + "%" :
-        "+" + f.money(TC.market.sellValue()) + " · half price off-peak";
-      sb.title = "Sells " + (TC.market.sellFrac() * 100).toFixed(0) + "% of your shares";
+        bonus > 1 ? bonus + "x · +" + f.money(TC.market.sellValue()) :
+        TC.market.sellingIntoCrash() ? "+" + f.money(TC.market.sellValue()) + " · crash" :
+        "+" + f.money(TC.market.sellValue());
+      // The long version lives in the tooltip
+      sb.title = "Sells " + (TC.market.sellFrac() * 100).toFixed(0) + "% of your shares" +
+        (bonus > 1 ? " at " + bonus + "x size (peak sell)" : TC.market.sellingIntoCrash() ? ". Selling into a crash drops the price " + Math.round(TC.market.sellDrop() * 100) + "% more" : ". Half price off-peak: sell near an event high for full value");
 
       // Buy-the-dip button during event dips
       const dip = TC.trade.dipReady();
