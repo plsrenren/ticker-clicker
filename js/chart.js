@@ -66,14 +66,35 @@ TC.chart = (() => {
 
   function runRec() {
     const s = TC.state && TC.state.data;
-    if (!s) return null;
-    if (!s.runChart || !Array.isArray(s.runChart.p)) s.runChart = { every: 2, t: 0, p: [], hi: [], lo: [], fromIpo: s.clock < 5 };
-    return s.runChart;
+    return s && s.runChart && Array.isArray(s.runChart.p) ? s.runChart : null;
+  }
+  // Start the record. A run already under way (a save from before this record existed) gets a
+  // believable made-up path from $0 at the IPO to now, the same way the live chart is filled on load.
+  function startRun(s, live) {
+    const r = { every: 2, t: 0, p: [], hi: [], lo: [], fromIpo: true };
+    if (s.clock >= 6 && live > 0) {
+      const n = Math.max(3, Math.min(RUN_MAX, Math.floor(s.clock / 2)));
+      r.every = s.clock / (n - 1);
+      const a = Math.log(Math.min(live, 0.25)), b = Math.log(live), path = [];
+      let x = 0;
+      for (let i = 0; i < n; i++) { x += (Math.random() - 0.5) * 0.08 + (Math.random() < 0.01 ? -0.15 : 0); path.push(x); }
+      for (let i = 0; i < n; i++) {
+        const f = i / (n - 1);
+        // ease-in curve in log space: slow start, faster climb, like a real run
+        const v = i === 0 ? 0 : Math.exp(a + (b - a) * Math.pow(f, 0.8) + path[i] - path[n - 1] * f);
+        r.p.push(v); r.hi.push(v); r.lo.push(v);
+      }
+      r.p[n - 1] = r.hi[n - 1] = r.lo[n - 1] = live;
+    } else {
+      // A fresh listing: pin the IPO point at $0, then the live point keeps updating after it
+      r.p = [0, live]; r.hi = [0, live]; r.lo = [0, live];
+    }
+    return (s.runChart = r);
   }
   function recordRun(dt, live) {
     const s = TC.state && TC.state.data;
-    if (!s || !s.listed || !(live > 0)) return;
-    const r = runRec();
+    if (!s || !s.listed || !(live >= 0)) return;
+    const r = runRec() || startRun(s, live);
     const L = r.p.length - 1;
     r.t += dt;
     if (L < 0 || r.t >= r.every) {
@@ -254,9 +275,8 @@ TC.chart = (() => {
         // ALL: the whole run fits the plot; the axis spans its low to high (and your ATH)
         const r = runRec(), n = r.p.length;
         let hi = Math.max(...(mode === "candles" ? r.hi : r.p), live, TC.state.data.bestPrice || 0);
-        let lo = Math.min(...(mode === "candles" ? r.lo : r.p), live);
-        const margin = Math.max((hi - lo) * 0.08, hi * 0.02, 0.5);
-        const tMax = hi + margin, tMin = Math.max(0, lo - margin);
+        const margin = Math.max(hi * 0.08, 0.5);
+        const tMax = hi + margin, tMin = 0; // ALL always starts from $0
         yMax += (tMax - yMax) * Math.min(1, 6 * dt);
         yMin += (tMin - yMin) * Math.min(1, 6 * dt);
         if (tagFlash.t > 0) tagFlash.t -= dt;
