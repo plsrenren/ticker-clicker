@@ -3,7 +3,7 @@
   "rewrites": [
     { "source": "/race/css/:path*", "destination": "/css/:path*" },
     { "source": "/race/js/:path*", "destination": "/js/:path*" },
-    { "source": "/race", "destination": "/index.html" },
-    { "source": "/race/:code", "destination": "/index.html" }
+    { "source": "/race", "destination": "/" },
+    { "source": "/race/:code", "destination": "/" }
   ]
 }
