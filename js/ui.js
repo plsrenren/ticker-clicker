@@ -110,7 +110,7 @@ TC.ui = (() => {
       r.name.textContent = it.name;
       if (kind === "generator") {
         const sm = (TC.seasons ? TC.seasons.genMult(it.id) : 1) * (TC.debuffs ? TC.debuffs.genMult(it.id) : 1);
-        r.desc.textContent = "+" + f.money(TC.market.px(it.rate * TC.market.genMult() * sm)) + "/s each" +
+        r.desc.textContent = "+" + f.money(it.rate * TC.market.genMult() * sm) + "/s each" +
           (sm < 1 ? " · −" + Math.round((1 - sm) * 100) + "% now" : "");
         r.desc.classList.toggle("nerfed", sm < 1);
         const n = buyCount(it);
@@ -409,8 +409,9 @@ TC.ui = (() => {
       initRolls();
       rollCash(f.money(st().cash), st().cash);
       $("income").textContent = f.money(TC.market.income()) + "/s";
-      $("perClick").textContent = "+" + f.money(TC.market.px(TC.market.perClick()));
-      $("perSec").textContent = "+" + f.money(TC.market.px(TC.market.perSecond())) + "/s";
+      // Buying power is dollars spent, so a stock split doesn't change it (only per-share prices are split)
+      $("perClick").textContent = "+" + f.money(TC.market.perClick());
+      $("perSec").textContent = "+" + f.money(TC.market.perSecond()) + "/s";
       const s = st(), below = s.bestPrice - s.basePrice;
       $("holdings").textContent = "How cash works: every $1 your price climbs above its record (" + f.money(s.bestPrice) + ") sells a sliver of your stake for " +
         f.money(TC.market.cashPerDollar()) + ". SELL dumps 3% of your shares. Buy back in dips to grow it again." + (below > 0.005 ? " You're " + f.money(below) + " below it right now." : "");

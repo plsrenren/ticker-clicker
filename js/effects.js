@@ -373,7 +373,7 @@ TC.effects = (() => {
         g.shadowColor = color;
         g.shadowBlur = (i === 0 ? 18 + it.pop * 14 : 0) * glow();
         g.font = `800 ${size}px "Bricolage Grotesque", system-ui, sans-serif`;
-        g.fillText((it.sign > 0 ? "$" : "-$") + TC.format.money(TC.market.px(it.amount)).slice(1), b.r - 14, it.y);
+        g.fillText((it.sign > 0 ? "$" : "-$") + TC.format.money(it.amount).slice(1), b.r - 14, it.y);
         y += size * 0.95;
       });
       g.shadowBlur = 0;
@@ -431,7 +431,7 @@ TC.effects = (() => {
       g.fillRect(tip.x - 5, y, 10, tip.y - y);
     }
     // tag
-    const label = (c.max ? "MAX  " : "") + "+" + TC.format.money(TC.market.px(add));
+    const label = (c.max ? "MAX  " : "") + "+" + TC.format.money(add);
     g.font = '700 13px "IBM Plex Mono", monospace';
     const lw = g.measureText(label).width + 16;
     const lx = b.r - lw - 8, ly = Math.max(b.t + 2, y - 24);
@@ -671,7 +671,7 @@ TC.effects = (() => {
     });
     TC.events.on("sellWall", ({ amount, x, y }) => {
       const tip = TC.chart.tip();
-      api.spawn("floatText", { x: (x ?? tip.x) - 20, y: (y ?? tip.y) - 24, text: "SELL WALL −" + TC.format.money(TC.market.px(amount)), color: C.down, size: 15, life: 0.9 });
+      api.spawn("floatText", { x: (x ?? tip.x) - 20, y: (y ?? tip.y) - 24, text: "SELL WALL −" + TC.format.money(amount), color: C.down, size: 15, life: 0.9 });
       api.spawn("ring", { x: tip.x, y: tip.y, color: C.down, max: 50, life: 0.4 });
     });
     TC.events.on("halted", ({ x, y }) => {
