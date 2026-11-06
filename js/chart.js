@@ -5,6 +5,8 @@
 //   TC.chart.bounds()    plot rectangle {l, r, t, b, w, h}
 //   TC.chart.flash(kind) flashes the price tag ("up" or "down")
 //   TC.chart.zoomBy(f)   scale the visible time window (f < 1 zooms in); saved in settings.zoom
+//   TC.chart.zoomY(f)    scale the price axis around the current price (f < 1 zooms in); settings.yZoom
+//   TC.chart.resetY()    back to the automatic price axis
 window.TC = window.TC || {};
 
 TC.chart = (() => {
@@ -16,7 +18,8 @@ TC.chart = (() => {
   let pts = [];
   let sinceSample = 0;
   let yMax = 10;            // animated top of the y-axis
-  let yMin = 0;             // animated bottom of the y-axis (the current price sits near the middle)
+  let yMin = 0;
+  let yScale = 1;           // manual price-axis zoom on top of the auto range (1 = auto)             // animated bottom of the y-axis (the current price sits near the middle)
   let tagFlash = { kind: "up", t: 0 };
   let glowT = 0;            // extra line glow after a new all-time high (seconds left)
   const pad = { l: 10, r: 66, t: 18, b: 26 };
@@ -100,6 +103,8 @@ TC.chart = (() => {
     init(el) {
       const saved = TC.state && TC.state.data.settings.zoom;
       if (saved) span = clampSpan(saved);
+      const sy = TC.state && TC.state.data.settings.yZoom;
+      if (sy) yScale = Math.max(0.15, Math.min(6, sy));
       canvas = el;
       ctx = canvas.getContext("2d");
       readColors();
@@ -156,6 +161,12 @@ TC.chart = (() => {
     setMode(m) { mode = m === "candles" ? "candles" : "line"; },
 
     span: () => span,
+    yZoomed: () => Math.abs(yScale - 1) > 0.01,
+    zoomY(f) {
+      yScale = Math.max(0.15, Math.min(6, yScale * f));
+      if (TC.state) TC.state.data.settings.yZoom = yScale;
+    },
+    resetY() { yScale = 1; if (TC.state) TC.state.data.settings.yZoom = 1; },
     zoomBy(f) {
       const next = clampSpan(span * f);
       if (next === span) return;
@@ -180,7 +191,7 @@ TC.chart = (() => {
       const vs = visStart();
       const peak = Math.max(...(mode === "candles" ? hiArr : history).slice(vs), 1);
       const low = Math.min(...(mode === "candles" ? loArr : history).slice(vs));
-      const half = Math.max(peak - live, live - low, live * 0.1, 0.5) * 1.15;
+      const half = Math.max(peak - live, live - low, live * 0.1, 0.5) * 1.15 * yScale;
       const tMax = live + half, tMin = Math.max(0, live - half);
       const kMax = tMax > yMax ? 8 : 1.5, kMin = tMin < yMin ? 8 : 1.5; // widen fast, tighten slowly
       yMax += (tMax - yMax) * Math.min(1, kMax * dt);
@@ -222,6 +233,12 @@ TC.chart = (() => {
         ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
         ctx.fillStyle = C.axis;
         ctx.fillText(TC.format.axis(TC.market.px(v)), w - pad.r + 8, y);
+      }
+
+      if (Math.abs(yScale - 1) > 0.01) {
+        ctx.fillStyle = C.muted;
+        ctx.textAlign = "left";
+        ctx.fillText("AUTO ↺", w - pad.r + 8, h - pad.b - 10);
       }
 
       // Time labels
