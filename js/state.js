@@ -32,6 +32,7 @@ TC.state = (() => {
       lastSellAt: -1e9,  // game clock of your last sell (SEC fine window)
       debuffs: {},       // debuff id -> game clock time it ends
       dividendsOn: true, // dividend payouts switched on (dividends.js)
+      neighbor: false,   // the neighbor bought in this run (news.js)
       indexed: false,    // index inclusion happened this run (news.js)
       buybackHeat: 0,    // buyback premium (market.buybackCost)
       buybackAt: 0,

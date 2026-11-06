@@ -130,6 +130,13 @@ TC.flavor = (() => {
     opexDown: ["Puts pay out. {you} drops off the pin. {pct}", "Pin breaks down: {you} {pct}", "Max pain wins. {you} {pct}"],
     gamma: ["Gamma squeeze! Dealers forced to buy {you}. {pct}", "Second leg: options dealers chase {you} {pct}", "Calls go in the money, dealers panic-buy {you}. {pct}"],
 
+    neighbor: [
+      "Your neighbor Gary heard about {you} at the mailbox and bought in",
+      "The lady next door put her bingo winnings into {you}",
+      "Neighbor saw your yard sign and grabbed some {you}",
+      "Your neighbor's kid convinced him to buy {you}. A lot of it",
+      "Over the fence: your neighbor is now a {you} shareholder",
+    ],
     whaleBuy: [
       "Whale alert: a mystery wallet is sweeping {you}",
       "Unknown buyer just took every {you} sell order",

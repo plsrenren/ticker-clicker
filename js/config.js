@@ -74,6 +74,7 @@ TC.config = {
     maxGap: 55,
     minPrice: 5,         // events start at a $5M market cap (small ones: see intensity in news.js)
     intensity: { min: 0.5, perDecade: 0.12, max: 1.1 }, // event size x0.5 at $5M cap, x0.74 at $500M, x0.98 at $50B, x1.1 at $500B+ (sim-tuned: same end time)
+    neighborChance: 0.006, // per second under a $5M cap (about once every ~3 min there), once per run
     shortTaps: 25,
     splitTaps: 30,       // taps in 6s to push a stock split through (only offered above a $1,000 share price)
     opexTaps: 0.065,     // options expiry: pressure each tap adds (sellers pull it down 0.2/s, so about 3 taps/s holds it)

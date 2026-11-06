@@ -285,6 +285,21 @@ TC.news = (() => {
       return types[Math.random() < dumpOdds ? "whaleDump" : "whaleBuy"](opts);
     },
 
+    // Neighbor (good, tiny caps only): the guy next door hears about you and buys a chunk in one order.
+    // Fixed size (not scaled by intensity): at a sub-$5M cap one neighbor is a real buyer.
+    neighbor() {
+      const gain = rand(0.12, 0.2);
+      let t = 0;
+      return {
+        start() {
+          TC.market.shift(gain, "neighbor");
+          banner.show({ tag: "NEIGHBOR BUYS IN", tone: "up", text: L("neighbor"), sub: pct(gain) });
+          TC.events.emit("news", { type: "neighbor", tone: "up" });
+        },
+        update(dt) { t += dt; return t < 3; },
+      };
+    },
+
     // Whale buy (good): a mystery buyer sweeps the order book in 6 big orders over 4s.
     // Tap along to follow the whale: every tap in the window adds 1% more to the total, up to +50%.
     whaleBuy() {
@@ -888,6 +903,10 @@ TC.news = (() => {
         return;
       }
       if (chain) return;
+      // Below a $5M cap there's no news yet, just a rare neighbor buying in (once per run)
+      if (!s.neighbor && s.basePrice >= 0.5 && cap() < 5e6 && Math.random() < cfg.news.neighborChance * dt) {
+        s.neighbor = true; api.trigger("neighbor"); return;
+      }
       if (s.basePrice < cfg.news.minPrice) return;
       // Index inclusion fires once per run at a $100B market cap
       if (!s.indexed && TC.market.marketCap(s.bestPrice) >= 1e11) { api.trigger("index"); return; }
