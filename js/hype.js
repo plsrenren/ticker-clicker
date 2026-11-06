@@ -17,7 +17,7 @@ TC.hype = (() => {
       id: "pr", name: "Press release", unlock: 25, cooldown: 25,
       run() {
         if (scandal()) return scandalHit();
-        play([{ f: rand(0.1, 0.16), d: 2.5 }]);
+        play([{ f: rand(0.1, 0.16), d: 2.5 }], "pr");
         return { title: "PRESS RELEASE", tone: "up" };
       },
     },
@@ -50,7 +50,7 @@ TC.hype = (() => {
       id: "call", name: "Earnings call", unlock: 1200, cooldown: 100,
       blocked: () => !!(TC.news && TC.news.active()),
       run() {
-        TC.news.trigger("earnings", { beatOdds: 0.8 });
+        if (TC.news.trigger("earnings", { beatOdds: 0.8 })) callEvent = TC.news.active();
         return null; // the news banner does the talking
       },
     },
@@ -76,10 +76,12 @@ TC.hype = (() => {
   }
   let boostUntil = -1;     // tweet storm end time
   let segs = null, seg = 0, segT = 0, acc = 0, applied = 0;
+  let segOwner = null;     // which move's rally is playing (press release shows Live while it runs)
+  let callEvent = null;    // the earnings event an earnings call started (shows Live until it ends)
   const els = {};
 
   // Run a list of price segments ({ f: fraction, d: seconds }), smoothly
-  function play(list) { segs = list; seg = 0; segT = 0; acc = 0; applied = 0; }
+  function play(list, owner = null) { segs = list; seg = 0; segT = 0; acc = 0; applied = 0; segOwner = owner; }
 
   function status(m) {
     const s = st();
@@ -124,7 +126,7 @@ TC.hype = (() => {
       }
       TC.events.on("reset", () => {
         for (const k in readyAt) delete readyAt[k];
-        boostUntil = -1; segs = null; lockedUntil = -1;
+        boostUntil = -1; segs = null; lockedUntil = -1; segOwner = null; callEvent = null;
       });
     },
 
@@ -149,8 +151,14 @@ TC.hype = (() => {
         const e = els[m.id];
         if (!e) continue;
         const v = status(m);
-        const boostOn = m.id === "tweet" && api.boosted();
-        const sub = boostOn ? "Live " + Math.ceil(boostUntil - s.clock) + "s" : v.sub;
+        // Live: tweet storm while the boost runs, press release while its rally plays,
+        // earnings call while the earnings event it started is on screen
+        let live = null;
+        if (m.id === "tweet" && api.boosted()) live = "Live " + Math.ceil(boostUntil - s.clock) + "s";
+        if (m.id === "pr" && segs && segOwner === "pr") live = "Live " + Math.max(1, Math.ceil(segs[seg].d - segT)) + "s";
+        if (m.id === "call" && callEvent) { if (TC.news.active() === callEvent) live = "Live"; else callEvent = null; }
+        const boostOn = !!live;
+        const sub = live || v.sub;
         const key = v.state + sub;
         e.b.style.setProperty("--cd", v.frac ? v.frac.toFixed(3) : 0);
         if (key === e.key) continue;
