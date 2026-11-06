@@ -110,9 +110,14 @@ TC.ui = (() => {
     }
   }
 
+  // Keep upgrades in config order. Only touch the DOM when the order is actually wrong: moving a row
+  // (even to the same spot) between mousedown and mouseup cancels the click, and this runs every 0.1s.
   function sortUpgrades() {
     const list = $("upgrades");
-    for (const u of cfg.upgrades) if (rows[u.id].li.parentElement === list) list.appendChild(rows[u.id].li);
+    const want = cfg.upgrades.map((u) => rows[u.id].li).filter((li) => li.parentElement === list);
+    const have = [...list.children];
+    if (want.length === have.length && want.every((li, i) => li === have[i])) return;
+    for (const li of want) list.appendChild(li);
   }
 
   // ---- Desk tabs, buy amount, owned toggle ----
