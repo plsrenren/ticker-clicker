@@ -26,10 +26,39 @@ TC.rivals = (() => {
   let link = null;       // { r, until, last } rival that follows your price (partnership)
   const find = (sym) => rivals.find((r) => r.sym === sym);
 
+  // Real players who went private join the tape as PRIVATE entries at the cap they reached.
+  // Read from the leaderboard API (api/leaderboard.js): the speed board lists players who went private,
+  // the cap board gives their best cap. Off the real site (file://, the Artifact) or before that API
+  // is deployed, the fetch fails quietly and the tape is just the made-up rivals.
+  let privates = [];     // [{ sym, price, open, shares: 1, private: true }]
+  const MAX_PRIVATE = 6;
+  async function loadPrivates() {
+    if (!/^https?:$/.test(location.protocol)) return;
+    try {
+      const get = (board) => fetch("/api/leaderboard?board=" + board + "&period=all").then((r) => (r.ok ? r.json() : null));
+      const [speed, caps] = await Promise.all([get("speed"), get("cap")]);
+      if (!speed || !Array.isArray(speed.top)) return;
+      const capBySym = {};
+      for (const row of (caps && caps.top) || []) if (!capBySym[row.sym]) capBySym[row.sym] = row.score;
+      const seen = new Set(NAMES);
+      const next = [];
+      for (const row of speed.top) {
+        if (!row.sym || seen.has(row.sym) || next.length >= MAX_PRIVATE) continue;
+        seen.add(row.sym);
+        const cap = Math.max(1e12, capBySym[row.sym] || 1e12);
+        next.push({ sym: row.sym, price: cap, open: cap, shares: 1, private: true });
+      }
+      privates = next;
+      order = "";
+      rerank();
+      paint();
+    } catch (e) { /* offline or no API: keep the made-up rivals only */ }
+  }
+
   // Everyone, you included, sorted by market cap (biggest first)
   function ranked() {
     const you = TC.market.marketCap(TC.market.quote());
-    return rivals.map((r) => ({ r, cap: capOf(r) })).concat([{ you: true, cap: you }]).sort((a, b) => b.cap - a.cap);
+    return rivals.concat(privates).map((r) => ({ r, cap: capOf(r) })).concat([{ you: true, cap: you }]).sort((a, b) => b.cap - a.cap);
   }
 
   function render() {
@@ -42,7 +71,7 @@ TC.rivals = (() => {
     for (let copy = 0; copy < 2; copy++) {
       list.forEach((x, i) => {
         const el = document.createElement("span");
-        el.className = "rv" + (x.you ? " rv-you" : "");
+        el.className = "rv" + (x.you ? " rv-you" : x.r.private ? " rv-private" : "");
         track.appendChild(el);
         cells.push(x.you ? { el, you: true, rank: i + 1 } : { el, r: x.r, rank: i + 1 });
       });
@@ -76,7 +105,7 @@ TC.rivals = (() => {
       const dir = ch > 0.0005 ? "up" : ch < -0.0005 ? "down" : "flat";
       c.el.dataset.dir = dir;
       c.el.classList.toggle("rv-hot", !c.you && hot[c.r.sym] > 0);
-      const move = c.you && s.dayOpen <= 0 ? "NEW" : `${dir === "down" ? "▼" : "▲"}${Math.abs(ch * 100).toFixed(1)}%`;
+      const move = c.you && s.dayOpen <= 0 ? "NEW" : !c.you && c.r.private ? "PRIVATE" : `${dir === "down" ? "▼" : "▲"}${Math.abs(ch * 100).toFixed(1)}%`;
       c.el.textContent = `#${c.rank} $${sym} ${TC.format.axis(cap)} ${move}`;
     }
   }
@@ -103,6 +132,9 @@ TC.rivals = (() => {
     init() {
       render();
       paint();
+      loadPrivates();
+      setInterval(loadPrivates, 5 * 60 * 1000);
+      TC.events.on("private", () => setTimeout(loadPrivates, 4000)); // your own exit shows up once it's recorded
       TC.events.on("reset", () => { passedSet = null; order = ""; render(); paint(); });
       TC.events.on("news", ({ tone, big }) => {
         if (tone === "down") nudge(0.02, big ? 0.07 : 0.04);   // money rotates into rivals
