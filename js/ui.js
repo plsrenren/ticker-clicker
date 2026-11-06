@@ -456,6 +456,9 @@ TC.ui = (() => {
       // Founder stake card
       $("stakePct").textContent = (TC.market.stakePct() * 100).toFixed(2) + "%";
       $("stakeVal").textContent = f.money(TC.market.stakeValue(st().basePrice));
+      // Share counts as shown: every 10-for-1 split gives everyone 10x the shares (the economy itself runs unsplit)
+      const k = st().split || 1;
+      $("stakeShares").textContent = f.int(Math.round(st().shares * k)) + " of " + f.int(cfg.sharesOutstanding * k) + " shares" + (k > 1 ? " · split " + k + ":1" : "");
       const bb = $("buyback");
       const full = st().shares + cfg.stake.buyback > cfg.stake.max;
       bb.disabled = !TC.market.canBuyback();

@@ -129,6 +129,25 @@ TC.chart = (() => {
       if (live < r.lo[L]) r.lo[L] = live;
     }
   }
+  // Chart markers (stock splits). LIVE keeps them by sample number, ALL by seconds since the record began.
+  let sampleN = 0;
+  let liveMarks = [];   // [{ n, label }]
+  const runTotal = (r) => (r.p.length - 1) * r.every + r.t;
+  function drawMark(x, label) {
+    if (x < pad.l || x > w - pad.r) return;
+    const top = pad.t, bot = h - pad.b;
+    ctx.strokeStyle = C.core + "88"; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(Math.round(x) + 0.5, top + 18); ctx.lineTo(Math.round(x) + 0.5, bot); ctx.stroke(); ctx.setLineDash([]);
+    ctx.font = '600 10px "IBM Plex Mono", monospace';
+    const tw = ctx.measureText(label).width + 10;
+    const lx = Math.min(w - pad.r - tw, Math.max(pad.l, x - tw / 2));
+    ctx.fillStyle = C.core;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(lx, top, tw, 16, 4); else ctx.rect(lx, top, tw, 16);
+    ctx.fill();
+    ctx.fillStyle = C.ink; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(label, lx + tw / 2, top + 8);
+  }
   const allOn = () => { const r = range === "all" && runRec(); return !!r && r.p.length >= 3; };
 
   // Candles for the ALL view: about 60 across the run
@@ -209,6 +228,7 @@ TC.chart = (() => {
     },
 
     clear() {
+      liveMarks = [];
       api.fill(0);
       yMax = 10; yMin = 0;
     },
@@ -252,6 +272,13 @@ TC.chart = (() => {
       hiArr = history.slice(); loArr = history.slice();
     },
 
+    // Drop a marker at "now" on both views (e.g. "10:1" for a stock split)
+    mark(label) {
+      liveMarks.push({ n: sampleN, label });
+      if (liveMarks.length > 20) liveMarks.shift();
+      const r = runRec();
+      if (r) { (r.marks = r.marks || []).push({ at: runTotal(r), label }); }
+    },
     range: () => range,
     setRange(r) { range = r === "all" ? "all" : "live"; },
     mode: () => mode,
@@ -278,6 +305,7 @@ TC.chart = (() => {
       while (sinceSample >= cfg.sampleMs) {
         sinceSample -= cfg.sampleMs;
         history.push(live); hiArr.push(live); loArr.push(live);
+        sampleN++;
         if (history.length > MAX) { history.shift(); hiArr.shift(); loArr.shift(); }
       }
       const L = history.length - 1;
@@ -396,6 +424,15 @@ TC.chart = (() => {
         ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke(); ctx.setLineDash([]);
         ctx.font = '500 10px "IBM Plex Mono", monospace'; ctx.fillStyle = C.up; ctx.textAlign = "left"; ctx.textBaseline = "bottom";
         ctx.fillText("ATH " + TC.format.axis(TC.market.px(best)), pad.l + 4, y - 3);
+      }
+
+      // Markers (stock splits)
+      if (all) {
+        const r = runRec(), total = runTotal(r);
+        for (const m of r.marks || []) drawMark(pad.l + plotW() * (m.at / Math.max(1e-9, total)), m.label);
+      } else {
+        const shift = sinceSample / cfg.sampleMs;
+        for (const m of liveMarks) drawMark(xOf(history.length - 1 - (sampleN - m.n), shift), m.label);
       }
 
       if (mode === "candles") {

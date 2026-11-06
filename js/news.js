@@ -441,6 +441,7 @@ TC.news = (() => {
             if (taps >= need) {
               resolved = true;
               st().split = (st().split || 1) * 10;
+              TC.chart.mark("10:1");
               const up = mag(0.06, 0.12);
               splitBoostUntil = st().clock + 20;
               banner.show({ tag: "10-FOR-1 SPLIT", tone: "up", text: L("splitWin", { pct: pct(up), bid: TC.format.money(TC.market.px(st().basePrice)) }), sub: "Buyers 1.5x for 20s" });
