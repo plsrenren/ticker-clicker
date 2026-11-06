@@ -70,8 +70,13 @@ TC.ui = (() => {
         shownLocked = true;
         r.btn.classList.add("locked");
         r.btn.disabled = true;
-        r.name.textContent = "???";
-        r.desc.textContent = "Reach " + f.money(TC.market.marketCap(it.reveal * 0.3)) + " market cap";
+        // Blurred name that sharpens as you approach the reveal price
+        const near = Math.min(1, st().bestPrice / (it.reveal * 0.3));
+        r.name.textContent = it.name;
+        r.name.style.filter = "blur(" + (6 * (1 - near) + 2.5).toFixed(1) + "px)";
+        r.name.setAttribute("aria-label", "Locked");
+        r.desc.textContent = "Reach " + f.money(TC.market.marketCap(it.reveal * 0.3)) + " cap · " + Math.floor(near * 100) + "%";
+        r.li.style.setProperty("--near", near.toFixed(3));
         r.cost.textContent = "";
         r.count.textContent = "";
         continue;
@@ -79,6 +84,8 @@ TC.ui = (() => {
 
       r.li.hidden = false;
       r.btn.classList.remove("locked");
+      r.name.style.filter = "";
+      r.name.removeAttribute("aria-label");
       r.name.textContent = it.name;
       if (kind === "generator") {
         const sm = (TC.seasons ? TC.seasons.genMult(it.id) : 1) * (TC.debuffs ? TC.debuffs.genMult(it.id) : 1);
@@ -150,6 +157,52 @@ TC.ui = (() => {
     TC.state.save();
   }
 
+  // Rolling numbers: digits slide like an odometer when a header number changes, and a move of
+  // 0.5%+ flashes the number green (up) or red (down). Rebuilds when the shape of the text changes.
+  function makeRoll(el) {
+    el.classList.add("roll");
+    let prevText = "", flashedAt = null, flashT = 0, lastAt = 0;
+    return (text, value) => {
+      if (text === prevText) return;
+      // At most ~5 rolls a second, so a jittery last digit settles instead of blurring
+      const now = performance.now();
+      if (prevText && now - lastAt < 200) return;
+      lastAt = now;
+      const shape = (s) => s.replace(/\d/g, "0");
+      if (!prevText || shape(text) !== shape(prevText)) {
+        el.textContent = "";
+        for (const c of text) {
+          const box = document.createElement("span");
+          box.setAttribute("aria-hidden", "true");
+          if (/\d/.test(c)) {
+            box.className = "roll-d";
+            const strip = document.createElement("span");
+            strip.className = "roll-s";
+            for (let d = 0; d <= 9; d++) { const n = document.createElement("span"); n.textContent = d; strip.appendChild(n); }
+            box.appendChild(strip);
+          } else { box.className = "roll-c"; box.textContent = c; }
+          el.appendChild(box);
+        }
+      }
+      el.setAttribute("aria-label", text);
+      const strips = el.querySelectorAll(".roll-s");
+      let i = 0;
+      for (const c of text) if (/\d/.test(c)) strips[i++].style.transform = "translateY(" + (-c * 1.1).toFixed(2) + "em)";
+      if (flashedAt == null) flashedAt = value;
+      else if (Math.abs(value / (flashedAt || 1) - 1) >= 0.005) {
+        el.classList.remove("roll-up", "roll-down");
+        void el.offsetWidth;
+        el.classList.add(value > flashedAt ? "roll-up" : "roll-down");
+        clearTimeout(flashT);
+        flashT = setTimeout(() => el.classList.remove("roll-up", "roll-down"), 220);
+        flashedAt = value;
+      }
+      prevText = text;
+    };
+  }
+  let rollCap, rollPx, rollCash;
+  function initRolls() { if (!rollCap) { rollCap = makeRoll($("price")); rollPx = makeRoll($("sharePrice")); rollCash = makeRoll($("cash")); } }
+
   function setDesk(open) {
     $("desk").classList.toggle("open", open);
     $("scrim").hidden = !open;
@@ -216,6 +269,10 @@ TC.ui = (() => {
     // Log scale so early progress is visible: $1 -> 0%, $1M -> 100%
     const prog = Math.max(0, Math.min(1, Math.log10(Math.max(1, s.bestPrice)) / Math.log10(pc.minPrice)));
     $("privateFill").style.width = (prog * 100).toFixed(1) + "%";
+    // From 80% the bar starts to beat, faster as you close in (1.6s per beat at 80%, 0.35s at 100%)
+    const card = $("privateCard"), near = !unlocked && prog >= 0.8;
+    card.classList.toggle("near", near);
+    if (near) card.style.setProperty("--beat", (1.6 - (prog - 0.8) / 0.2 * 1.25).toFixed(2) + "s");
     $("privatePts").textContent = unlocked
       ? f.int(s.prestige.points) + " pts · " + bonus(s.prestige.points)
       : f.axis(TC.market.marketCap(s.bestPrice)) + " / " + f.axis(TC.market.marketCap(pc.minPrice)) + " cap";
@@ -238,6 +295,13 @@ TC.ui = (() => {
       api.setChartMode(b.dataset.mode);
     });
     api.setChartMode(st().settings.chart);
+    const rb = $("rangeToggle");
+    rb.addEventListener("pointerdown", (e) => e.stopPropagation());
+    rb.addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (b) api.setChartRange(b.dataset.range);
+    });
+    api.setChartRange(st().settings.chartRange || "live");
   }
 
   // ---- Achievements grid ----
@@ -302,9 +366,10 @@ TC.ui = (() => {
     frame(dt, quote) {
       if (flashTimer > 0 && (flashTimer -= dt) <= 0) $("price").classList.remove("tick-up", "tick-down");
 
-      $("price").textContent = f.money(TC.market.marketCap(quote));
+      initRolls();
+      rollCap(f.money(TC.market.marketCap(quote)), quote);
       $("stakeLine").textContent = "Your stake " + (TC.market.stakePct() * 100).toFixed(1) + "% · " + f.money(TC.market.stakeValue(quote));
-      $("sharePrice").textContent = f.money(TC.market.px(quote));
+      rollPx(f.money(TC.market.px(quote)), quote);
       const open = st().dayOpen;
       const diff = quote - open;
       const ch = $("change");
@@ -315,7 +380,8 @@ TC.ui = (() => {
     },
 
     refresh(force) {
-      $("cash").textContent = f.money(st().cash);
+      initRolls();
+      rollCash(f.money(st().cash), st().cash);
       $("income").textContent = f.money(TC.market.income()) + "/s";
       $("perClick").textContent = "+" + f.money(TC.market.px(TC.market.perClick()));
       $("perSec").textContent = "+" + f.money(TC.market.px(TC.market.perSecond())) + "/s";
@@ -331,12 +397,14 @@ TC.ui = (() => {
       sb.classList.toggle("peak", bonus > 1 && TC.market.canSell());
       sb.classList.toggle("risky", bonus <= 1 && TC.market.canSell() && TC.market.sellingIntoCrash());
       $("sellSub").textContent =
-        st().basePrice < cfg.sell.minPrice ? "Reach " + f.money(cfg.sell.minPrice) + " to sell" :
+        st().basePrice < cfg.sell.minPrice ? "Reach " + f.money(cfg.sell.minPrice) :
         cd > 0 ? "Ready in " + Math.ceil(cd) + "s" :
-        bonus > 1 ? "PEAK " + bonus + "x size · +" + f.money(TC.market.sellValue()) :
-        TC.market.sellingIntoCrash() ? "+" + f.money(TC.market.sellValue()) + " · CRASH: price −" + Math.round(TC.market.sellDrop() * 100) + "%" :
-        "+" + f.money(TC.market.sellValue()) + " · half price off-peak";
-      sb.title = "Sells " + (TC.market.sellFrac() * 100).toFixed(0) + "% of your shares";
+        bonus > 1 ? bonus + "x · +" + f.money(TC.market.sellValue()) :
+        TC.market.sellingIntoCrash() ? "+" + f.money(TC.market.sellValue()) + " · crash" :
+        "+" + f.money(TC.market.sellValue());
+      // The long version lives in the tooltip
+      sb.title = "Sells " + (TC.market.sellFrac() * 100).toFixed(0) + "% of your shares" +
+        (bonus > 1 ? " at " + bonus + "x size (peak sell)" : TC.market.sellingIntoCrash() ? ". Selling into a crash drops the price " + Math.round(TC.market.sellDrop() * 100) + "% more" : ". Half price off-peak: sell near an event high for full value");
 
       // Buy-the-dip button during event dips
       const dip = TC.trade.dipReady();
@@ -382,6 +450,12 @@ TC.ui = (() => {
       st().settings.chart = m;
       TC.chart.setMode(m);
       document.querySelectorAll("#modeToggle button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
+    },
+
+    setChartRange(r) {
+      st().settings.chartRange = r;
+      TC.chart.setRange(r);
+      document.querySelectorAll("#rangeToggle button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.range === r)));
     },
 
     openDesk() { setDesk(true); },

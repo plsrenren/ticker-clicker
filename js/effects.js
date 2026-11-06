@@ -194,6 +194,68 @@ TC.effects = (() => {
       };
     },
 
+    // Firework: a burst of sparks that fan out evenly, fall and fade (new all-time highs)
+    firework({ x, y, color = C.up, n = 26, speed = 170 }) {
+      let t = 0;
+      const life = 0.8;
+      const ps = [];
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + Math.random() * 0.2, sp = speed * (0.75 + Math.random() * 0.4);
+        ps.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, c: i % 3 ? color : C.core });
+      }
+      return {
+        update(dt) {
+          t += dt;
+          for (const p of ps) { p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.96; p.vy = p.vy * 0.96 + 120 * dt; }
+          return t < life;
+        },
+        draw(g) {
+          g.globalAlpha = Math.max(0, 1 - t / life);
+          g.shadowBlur = 10;
+          for (const p of ps) {
+            g.fillStyle = p.c; g.shadowColor = p.c;
+            g.fillRect(p.x - 1.5, p.y - 1.5, 3, 3);
+          }
+          g.shadowBlur = 0; g.globalAlpha = 1;
+        },
+      };
+    },
+
+    // Crack: jagged red fracture lines shooting out from a point (big crashes)
+    crack({ x, y, n = 5, len = 160 }) {
+      let t = 0;
+      const life = 1.1;
+      const lines = [];
+      for (let i = 0; i < n; i++) {
+        let a = Math.PI * 0.15 + Math.random() * Math.PI * 1.1; // mostly downward and sideways
+        let px = x, py = y;
+        const pts = [[px, py]];
+        const L = len * (0.6 + Math.random() * 0.6);
+        for (let d = 0; d < L; d += 8 + Math.random() * 6) {
+          a += (Math.random() - 0.5) * 0.9;
+          px += Math.cos(a) * 10; py += Math.sin(a) * 10;
+          pts.push([px, py]);
+        }
+        lines.push(pts);
+      }
+      return {
+        update(dt) { t += dt; return t < life; },
+        draw(g) {
+          const grow = Math.min(1, t / 0.12);
+          g.globalAlpha = 0.8 * (t < 0.35 ? 1 : Math.max(0, 1 - (t - 0.35) / (life - 0.35)));
+          g.strokeStyle = C.down; g.shadowColor = C.down; g.shadowBlur = 5;
+          g.lineWidth = 1.1; g.lineJoin = "miter";
+          for (const pts of lines) {
+            const m = Math.max(2, Math.ceil(pts.length * grow));
+            g.beginPath();
+            for (let i = 0; i < m; i++) i ? g.lineTo(pts[i][0], pts[i][1]) : g.moveTo(pts[i][0], pts[i][1]);
+            g.stroke();
+          }
+          g.shadowBlur = 0; g.globalAlpha = 1;
+        },
+      };
+    },
+
     // Floating headline text, used for milestones and the IPO
     floatText({ x, y, text, color = C.up, size = 26, life = 1.6 }) {
       let t = 0;
@@ -348,7 +410,7 @@ TC.effects = (() => {
     const shots = c.max ? 15 : Math.round(12 * c.p);
     const add = shots * TC.market.perClick();
     // the y-axis starts at $0, so screen height is proportional to price
-    const y = Math.max(b.t, b.b - (b.b - tip.y) * (price + add) / price);
+    const y = Math.max(b.t, tip.y - (TC.chart.yOf(price) - TC.chart.yOf(price + add)));
     g.save();
     // the line
     g.strokeStyle = c.max ? C.core : C.line;
@@ -457,6 +519,16 @@ TC.effects = (() => {
     const color = dir === "up" ? C.up : C.down;
     const hot = dir === "up" ? C.core : C.down;
     TC.events.emit("bigMove", { dir, tier, pct: mv });
+    // Crash drama: the chart glitches (red/cyan split, jitter) and cracks out from the price
+    if (dir === "down" && !reduced) {
+      const wrap = document.getElementById("chartWrap");
+      wrap.classList.remove("glitch", "glitch-big");
+      void wrap.offsetWidth;
+      wrap.classList.add(tier >= 2 ? "glitch-big" : "glitch");
+      clearTimeout(fireBig.gt);
+      fireBig.gt = setTimeout(() => wrap.classList.remove("glitch", "glitch-big"), tier >= 2 ? 650 : 320);
+      if (tier >= 2) api.spawn("crack", { x: tip.x, y: tip.y, n: 2 + tier, len: 40 + tier * 18 }, 1);
+    }
     // Tier 1 (6%+): thick pulse, ring, small shake
     api.spawn("pulse", { color: hot, speed: 220, width: 30 + tier * 12, life: 1.3, strength: 1.3 + tier * 0.3 });
     api.spawn("ring", { x: tip.x, y: tip.y, color, max: 90 + tier * 60, life: 0.7 });
@@ -561,6 +633,17 @@ TC.effects = (() => {
       api.spawn("floatText", { x: w / 2 - 30, y: h * 0.45, text: name.toUpperCase() + " IN 15s", color, size: 20, life: 1.8 });
     });
 
+    TC.events.on("passed", ({ syms, rank }) => {
+      const tip = TC.chart.tip();
+      const text = "PASSED $" + syms[syms.length - 1] + (syms.length > 1 ? " +" + (syms.length - 1) : "") + " · #" + rank;
+      api.spawn("floatText", { x: w / 2, y: h * 0.34, text, color: C.up, size: 20, life: 1.8 });
+      api.spawn("ring", { x: tip.x, y: tip.y, color: C.up, max: 110, life: 0.7 });
+    });
+    TC.events.on("chain", ({ depth }) => {
+      api.spawn("floatText", { x: w / 2 - 60, y: h * 0.38, text: depth > 1 ? "CHAIN REACTION x" + (depth + 1) : "CHAIN REACTION", color: FRENZY, size: 22, life: 1.6 });
+      api.spawn("pulse", { color: FRENZY, speed: 260, width: 30, life: 1, strength: 1.2 });
+      shake(3 + depth * 2, 0.3);
+    });
     TC.events.on("marginCall", () => {
       const tip = TC.chart.tip();
       api.spawn("floatText", { x: w / 2 - 40, y: h * 0.5, text: "MARGIN CALL", color: C.down, size: 30, life: 1.6 });
@@ -666,7 +749,30 @@ TC.effects = (() => {
       if (big) shake(tone === "down" ? 9 : 6, 0.45);
     });
 
+    // New all-time high: green stamp, line glow, fireworks. Round milestones get the same treatment, bigger.
+    function athShow(big) {
+      const tip = TC.chart.tip(), b = TC.chart.bounds();
+      TC.chart.glow(big ? 1.8 : 1.2);
+      TC.chart.flash("up");
+      api.spawn("ring", { x: tip.x, y: tip.y, color: C.up, max: big ? 220 : 140, life: 0.8 });
+      const bursts = big ? 5 : 3;
+      for (let i = 0; i < bursts; i++) {
+        setTimeout(() => {
+          const t = TC.chart.tip();
+          const x = i === 0 ? t.x : Math.max(b.l + 40, Math.min(b.r - 40, t.x - 40 - Math.random() * (b.r - b.l) * 0.5));
+          const y = i === 0 ? t.y : Math.max(b.t + 30, t.y - 30 - Math.random() * 120);
+          api.spawn("firework", { x, y, color: i % 2 ? C.core : C.up, n: big ? 34 : 26, speed: big ? 210 : 170 });
+        }, i * 160);
+      }
+      api.spawn("vignette", { color: C.up, life: 1, strength: big ? 0.8 : 0.5 }, 2);
+      shake(big ? 6 : 3, 0.3);
+    }
+    TC.events.on("ath", () => {
+      athShow(false);
+      api.spawn("floatText", { x: w / 2 - 70, y: h * 0.3, text: "NEW ATH", color: C.up, size: 34, life: 1.6 });
+    });
     TC.events.on("milestone", ({ price }) => {
+      athShow(true);
       const tip = TC.chart.tip();
       api.spawn("ring", { x: tip.x, y: tip.y, max: 160 });
       api.spawn("pulse", { color: C.core, speed: 260, width: 40, life: 1.2, strength: 1.4 });

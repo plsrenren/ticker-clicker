@@ -165,32 +165,53 @@ window.TC = window.TC || {};
     wrap.addEventListener("pointerleave", release);
     wrap.addEventListener("contextmenu", (e) => e.preventDefault());
 
-    // Zoom the time window: two-finger pinch on touch, scroll wheel or trackpad pinch on desktop.
+    // Zoom like a trading chart:
+    //   time axis   horizontal pinch, or scroll wheel / trackpad pinch over the plot
+    //   price axis  vertical pinch, or scroll wheel over the price labels (or shift + wheel anywhere)
+    //   double-tap / double-click the price labels to go back to the automatic price axis
     // Taps still buy; a pinch only zooms once the fingers actually spread or close.
     const fingers = new Map();
-    let pinchDist = 0;
-    const dist = () => { const [a, b] = [...fingers.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+    let pinch = null; // { dx, dy } finger separation on each axis
+    const spans = () => { const [a, b] = [...fingers.values()]; return { dx: Math.max(30, Math.abs(a.x - b.x)), dy: Math.max(30, Math.abs(a.y - b.y)) }; };
+    const onAxis = (clientX) => clientX - wrap.getBoundingClientRect().left > TC.chart.bounds().r;
     wrap.addEventListener("pointerdown", (e) => {
       if (e.pointerType !== "touch") return;
       fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (fingers.size === 2) pinchDist = dist();
+      if (fingers.size === 2) pinch = spans();
     });
     wrap.addEventListener("pointermove", (e) => {
       if (!fingers.has(e.pointerId)) return;
       fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      if (fingers.size !== 2 || !pinchDist) return;
-      const d = dist();
-      if (Math.abs(d - pinchDist) < 6) return;
-      TC.chart.zoomBy(pinchDist / d); // spread fingers = fewer seconds on screen = zoom in
-      pinchDist = d;
+      if (fingers.size !== 2 || !pinch) return;
+      const now = spans();
+      const fx = pinch.dx / now.dx, fy = pinch.dy / now.dy;
+      // Whichever direction the fingers are moving more decides the axis
+      if (Math.abs(Math.log(fy)) > Math.abs(Math.log(fx))) {
+        if (Math.abs(now.dy - pinch.dy) < 6) return;
+        TC.chart.zoomY(fy); // spread vertically = zoom in on price
+      } else {
+        if (Math.abs(now.dx - pinch.dx) < 6) return;
+        TC.chart.zoomBy(fx); // spread horizontally = fewer seconds on screen
+      }
+      pinch = now;
     });
-    const lift = (e) => { fingers.delete(e.pointerId); if (fingers.size < 2) pinchDist = 0; };
+    let axisTapAt = 0;
+    const lift = (e) => {
+      if (fingers.size === 1 && !pinch && e.type === "pointerup" && onAxis(e.clientX)) {
+        if (performance.now() - axisTapAt < 320) { TC.chart.resetY(); axisTapAt = 0; } else axisTapAt = performance.now();
+      }
+      fingers.delete(e.pointerId);
+      if (fingers.size < 2) pinch = null;
+    };
     wrap.addEventListener("pointerup", lift);
     wrap.addEventListener("pointercancel", lift);
+    wrap.addEventListener("dblclick", (e) => { if (onAxis(e.clientX)) TC.chart.resetY(); });
     wrap.addEventListener("wheel", (e) => {
       e.preventDefault();
       const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
-      TC.chart.zoomBy(Math.exp(dy * (e.ctrlKey ? 0.01 : 0.0015)));
+      const f = Math.exp(dy * (e.ctrlKey ? 0.01 : 0.0015));
+      if (e.shiftKey || onAxis(e.clientX)) TC.chart.zoomY(f);
+      else TC.chart.zoomBy(f);
     }, { passive: false });
 
     $("sell").addEventListener("click", () => {

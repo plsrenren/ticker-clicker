@@ -172,6 +172,9 @@ TC.sound = (() => {
         else if (id === "bear") chord([392, 330, 262, 196], { type: "sawtooth", dur: 0.6, vol: 0.12, spread: 0.12 });
         else chord([440, 440], { type: "triangle", dur: 0.4, vol: 0.2, spread: 0.2 });
       });
+      E.on("ath", () => { chord([523, 659, 784, 1047], { type: "triangle", dur: 0.35, vol: 0.22, spread: 0.06 }); noise({ dur: 0.5, vol: 0.12, from: 2000, to: 8000, q: 1, delay: 0.1 }); });
+      E.on("passed", () => { chord([784, 988], { type: "triangle", dur: 0.18, vol: 0.18, spread: 0.08 }); });
+      E.on("chain", ({ depth }) => { chord([660, 880, 1175].slice(0, depth + 1), { type: "square", dur: 0.12, vol: 0.12, spread: 0.07 }); });
       E.on("marginCall", () => { sfx.buzz(); tone({ freq: 240, to: 50, type: "square", dur: 0.5, vol: 0.16 }); });
       E.on("backfire", () => { sfx.buzz(); tone({ freq: 300, to: 60, type: "sawtooth", dur: 0.6, vol: 0.2 }); });
       // Big moves: deeper, louder hit for bigger tiers

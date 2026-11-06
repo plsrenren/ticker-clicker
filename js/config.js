@@ -78,7 +78,12 @@ TC.config = {
     splitTaps: 30,       // taps in 6s to push a stock split through (only offered above a $1,000 share price)
     opexTaps: 0.065,     // options expiry: pressure each tap adds (sellers pull it down 0.2/s, so about 3 taps/s holds it)
     gammaTaps: 14,       // taps in 4s after a short squeeze to set off the gamma squeeze leg
-    splitChance: 0.35,   // chance a random event is a split vote while the shown price is $1,000+       // taps needed to beat a short attack (6 seconds)
+    hackTaps: 22,        // taps to patch a hack before it drains the price (6s)
+    breachTaps: 26,      // taps after a data breach to win back 70% of the drop (6s)
+    exploitTaps: 20,     // taps to ship a patch before a zero-day goes public (5s)
+    splitChance: 0.35,
+    luckyChance: 0.025,  // 1 in 40 manual buys is a lucky fill...
+    luckyMult: 5,        // ...worth 5x (no special effect: the bigger +$ and jump speak for themselves)   // chance a random event is a split vote while the shown price is $1,000+       // taps needed to beat a short attack (6 seconds)
   },
 
   // Passive buyers: each owned unit buys `rate` dollars of your stock per second.
