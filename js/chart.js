@@ -298,19 +298,31 @@ TC.chart = (() => {
     }
   }
 
+  // Bars are grouped so each is at least IND.volBarPx wide whatever the zoom (grouped like candles,
+  // aligned to the newest sample so the forming bar is always on the right)
   function drawVolume(shift) {
     const n = history.length, vs = visStart();
-    let max = 4;
-    for (let i = vs; i < n; i++) if (volArr[i] > max) max = volArr[i];
+    const step = plotW() / (span - 1);
+    const K = Math.max(1, Math.ceil(IND.volBarPx / step));
+    let first = (n - 1) % K;
+    while (first + K < vs) first += K;
+    const groups = [];
+    let max = 4 * K;
+    for (let end = first; end < n; end += K) {
+      const a = Math.max(1, end - K + 1);
+      let v = 0;
+      for (let i = a; i <= end; i++) v += volArr[i];
+      if (v > max) max = v;
+      groups.push({ a, end, v });
+    }
     // Sit the bars on top of the LIVE / Line / MA buttons so they aren't hidden behind them
     const bot = Math.min(h - pad.b, togglesTop - 4), H = Math.min(46, plotH() * IND.volHeight);
-    const bw = Math.max(1, plotW() / (span - 1) * 0.7);
-    for (let i = Math.max(1, vs); i < n; i++) {
-      const v = volArr[i];
-      if (!v) continue;
-      const x = xOf(i, i === n - 1 ? 0 : shift);
-      const bh = Math.max(1, H * Math.sqrt(v / max)); // sqrt so a crash spike doesn't flatten everyday tapping
-      ctx.fillStyle = (history[i] >= history[i - 1] ? C.up : C.down) + "73";
+    const bw = Math.max(1, step * K * 0.72);
+    for (const g of groups) {
+      if (!g.v) continue;
+      const x = (xOf(g.a, g.a === n - 1 ? 0 : shift) + xOf(g.end, g.end === n - 1 ? 0 : shift)) / 2;
+      const bh = Math.max(1, H * Math.sqrt(g.v / max)); // sqrt so a crash spike doesn't flatten everyday tapping
+      ctx.fillStyle = (history[g.end] >= history[g.a - 1] ? C.up : C.down) + "73";
       ctx.fillRect(x - bw / 2, bot - bh, bw, bh);
     }
   }
