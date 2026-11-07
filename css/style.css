@@ -13,6 +13,8 @@
   --core: #e9fff2;       /* hot white core of the line */
   --up: #2ff58a;         /* semantic: buys and gains */
   --down: #ff4d5e;       /* semantic: sells and losses */
+  --ma-fast: #ffc94d;    /* fast moving average (amber) */
+  --ma-slow: #6ea8ff;    /* slow moving average (blue) */
   --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --safe-t: env(safe-area-inset-top, 0px);
@@ -155,6 +157,7 @@ body {
   cursor: pointer;
 }
 .range-toggle button { letter-spacing: 0.06em; }
+#maToggle button[aria-pressed="true"] { color: var(--ma-fast); }
 .mode-toggle button[aria-pressed="true"] { background: var(--rule); color: var(--text); }
 .mode-toggle button:focus-visible { outline: 2px solid var(--up); outline-offset: -2px; }
 
