@@ -54,6 +54,7 @@ TC.chart = (() => {
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    measureToggles();
   }
 
   // Pick a "nice" tick step (1, 2, 5 x 10^n) for a range.
@@ -301,14 +302,15 @@ TC.chart = (() => {
     const n = history.length, vs = visStart();
     let max = 4;
     for (let i = vs; i < n; i++) if (volArr[i] > max) max = volArr[i];
-    const bot = h - pad.b, H = Math.min(46, plotH() * IND.volHeight);
+    // Sit the bars on top of the LIVE / Line / MA buttons so they aren't hidden behind them
+    const bot = Math.min(h - pad.b, togglesTop - 4), H = Math.min(46, plotH() * IND.volHeight);
     const bw = Math.max(1, plotW() / (span - 1) * 0.7);
     for (let i = Math.max(1, vs); i < n; i++) {
       const v = volArr[i];
       if (!v) continue;
       const x = xOf(i, i === n - 1 ? 0 : shift);
-      const bh = Math.max(1, H * v / max);
-      ctx.fillStyle = (history[i] >= history[i - 1] ? C.up : C.down) + "4d";
+      const bh = Math.max(1, H * Math.sqrt(v / max)); // sqrt so a crash spike doesn't flatten everyday tapping
+      ctx.fillStyle = (history[i] >= history[i - 1] ? C.up : C.down) + "73";
       ctx.fillRect(x - bw / 2, bot - bh, bw, bh);
     }
   }
@@ -365,6 +367,13 @@ TC.chart = (() => {
     }
   }
   let lastDraw = 0;
+  let togglesTop = Infinity;   // top of the chart buttons, in canvas px
+  function measureToggles() {
+    const el = document.querySelector(".chart-toggles");
+    if (!el || !canvas) return;
+    const a = el.getBoundingClientRect(), c = canvas.getBoundingClientRect();
+    togglesTop = a.height ? a.top - c.top : Infinity;
+  }
 
   const api = {
     init(el) {
@@ -378,10 +387,19 @@ TC.chart = (() => {
       resize();
       window.addEventListener("resize", resize);
       showMA = !!(TC.state && TC.state.data.settings.ma);
-      // Volume: every trade counts once, whoever made it
-      const vol = () => { if (volArr.length) volArr[volArr.length - 1]++; };
-      for (const e of ["buy", "order", "sell", "rally"]) TC.events.on(e, vol);
+      // Volume: taps and buyer orders count one trade each; market events (crashes, pumps, silent
+      // moves) count by how far they moved the price, so a 30% crash is a tall bar however it was made.
+      const add = (v) => { if (volArr.length) volArr[volArr.length - 1] += v; };
+      TC.events.on("buy", () => add(1));
+      TC.events.on("order", () => add(1));
+      const moved = (e) => {
+        const q = TC.market.quote();
+        add((e && e.manual ? 1 : 0) + (e && e.amount > 0 && q > 0 ? IND.volPerPct * 100 * e.amount / q : 0));
+      };
+      TC.events.on("sell", moved);
+      TC.events.on("rally", moved);
       api.clear();
+      setTimeout(measureToggles, 0);
     },
 
     clear() {
@@ -423,7 +441,7 @@ TC.chart = (() => {
       }
       history[n - 1] = hiArr[n - 1] = loArr[n - 1] = to;
       // Believable made-up volume: light, with bursts on the bigger moves
-      volArr = history.map((v, i) => i ? Math.round(Math.random() * 3 + Math.abs(v / history[i - 1] - 1) * 400) : 0);
+      volArr = history.map((v, i) => i ? Math.round(Math.random() * 2 + Math.abs(v / history[i - 1] - 1) * 150) : 0);
       resetInd();
     },
 

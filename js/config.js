@@ -75,6 +75,7 @@ TC.config = {
     breakPct: 0.01,        // price must clear a level by 1% to call a BREAKOUT / BREAKDOWN
     breakCooldown: 8,      // seconds between break labels
     volHeight: 0.14,       // volume bars: share of the plot height (max 46px)
+    volPerPct: 3,          // volume a market event adds per 1% it moves the price (a tap or buyer order is 1)
     tagLife: 2.2,          // seconds a label floats
   },
 
