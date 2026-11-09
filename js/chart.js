@@ -9,7 +9,7 @@
 //   TC.chart.resetY()    back to the automatic price axis
 //   TC.chart.setRange(r) "live" (follows the price, zoomable) or "all" (the whole run since the IPO)
 //   TC.chart.setMA(on)   show the two moving averages (cross labels show either way)
-// Trader overlays on the LIVE view, all cosmetic: volume bars (trades per sample), support and
+// Trader overlays on the LIVE view, all cosmetic: support and
 // resistance at recent swing highs/lows with BREAKOUT / BREAKDOWN labels, and fast/slow moving
 // averages with GOLDEN CROSS / DEATH CROSS labels. They emit "breakout" and "maCross" events.
 window.TC = window.TC || {};
@@ -19,7 +19,6 @@ TC.chart = (() => {
   let canvas, ctx, w = 0, h = 0, dpr = 1;
   let history = [];      // close of each sample
   let hiArr = [], loArr = []; // high/low seen during each sample, for candle wicks
-  let volArr = [];       // trades (taps, buyer orders, sells) during each sample, for volume bars
   let mode = "line";     // "line" | "candles"
   let range = "live";    // "live" | "all"
   // Long-term record of the whole run for the ALL view, kept in the save (state.runChart):
@@ -54,7 +53,6 @@ TC.chart = (() => {
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    measureToggles();
   }
 
   // Pick a "nice" tick step (1, 2, 5 x 10^n) for a range.
@@ -298,35 +296,6 @@ TC.chart = (() => {
     }
   }
 
-  // Bars are grouped so each is at least IND.volBarPx wide whatever the zoom (grouped like candles,
-  // aligned to the newest sample so the forming bar is always on the right)
-  function drawVolume(shift) {
-    const n = history.length, vs = visStart();
-    const step = plotW() / (span - 1);
-    const K = Math.max(1, Math.ceil(IND.volBarPx / step));
-    let first = (n - 1) % K;
-    while (first + K < vs) first += K;
-    const groups = [];
-    let max = 4 * K;
-    for (let end = first; end < n; end += K) {
-      const a = Math.max(1, end - K + 1);
-      let v = 0;
-      for (let i = a; i <= end; i++) v += volArr[i];
-      if (v > max) max = v;
-      groups.push({ a, end, v });
-    }
-    // Sit the bars on top of the LIVE / Line / MA buttons so they aren't hidden behind them
-    const bot = Math.min(h - pad.b, togglesTop - 4), H = Math.min(46, plotH() * IND.volHeight);
-    const bw = Math.max(1, step * K * 0.72);
-    for (const g of groups) {
-      if (!g.v) continue;
-      const x = (xOf(g.a, g.a === n - 1 ? 0 : shift) + xOf(g.end, g.end === n - 1 ? 0 : shift)) / 2;
-      const bh = Math.max(1, H * Math.sqrt(g.v / max)); // sqrt so a crash spike doesn't flatten everyday tapping
-      ctx.fillStyle = (history[g.end] >= history[g.a - 1] ? C.up : C.down) + "73";
-      ctx.fillRect(x - bw / 2, bot - bh, bw, bh);
-    }
-  }
-
   function drawLevel(lv, color, text) {
     if (!lv) return;
     const y = Math.round(yOf(lv.v)) + 0.5;
@@ -379,13 +348,6 @@ TC.chart = (() => {
     }
   }
   let lastDraw = 0;
-  let togglesTop = Infinity;   // top of the chart buttons, in canvas px
-  function measureToggles() {
-    const el = document.querySelector(".chart-toggles");
-    if (!el || !canvas) return;
-    const a = el.getBoundingClientRect(), c = canvas.getBoundingClientRect();
-    togglesTop = a.height ? a.top - c.top : Infinity;
-  }
 
   const api = {
     init(el) {
@@ -399,19 +361,7 @@ TC.chart = (() => {
       resize();
       window.addEventListener("resize", resize);
       showMA = !!(TC.state && TC.state.data.settings.ma);
-      // Volume: taps and buyer orders count one trade each; market events (crashes, pumps, silent
-      // moves) count by how far they moved the price, so a 30% crash is a tall bar however it was made.
-      const add = (v) => { if (volArr.length) volArr[volArr.length - 1] += v; };
-      TC.events.on("buy", () => add(1));
-      TC.events.on("order", () => add(1));
-      const moved = (e) => {
-        const q = TC.market.quote();
-        add((e && e.manual ? 1 : 0) + (e && e.amount > 0 && q > 0 ? IND.volPerPct * 100 * e.amount / q : 0));
-      };
-      TC.events.on("sell", moved);
-      TC.events.on("rally", moved);
       api.clear();
-      setTimeout(measureToggles, 0);
     },
 
     clear() {
@@ -424,7 +374,6 @@ TC.chart = (() => {
     fill(value) {
       history = new Array(MAX).fill(value);
       hiArr = history.slice(); loArr = history.slice();
-      volArr = new Array(MAX).fill(0);
       resetInd();
     },
 
@@ -452,8 +401,6 @@ TC.chart = (() => {
         history[i] = v; hiArr[i] = v + w; loArr[i] = Math.max(0, v - w);
       }
       history[n - 1] = hiArr[n - 1] = loArr[n - 1] = to;
-      // Believable made-up volume: light, with bursts on the bigger moves
-      volArr = history.map((v, i) => i ? Math.round(Math.random() * 2 + Math.abs(v / history[i - 1] - 1) * 150) : 0);
       resetInd();
     },
 
@@ -462,7 +409,6 @@ TC.chart = (() => {
       if (!Array.isArray(arr) || !arr.length) return;
       history = arr.slice(-MAX);
       hiArr = history.slice(); loArr = history.slice();
-      volArr = new Array(history.length).fill(0);
       resetInd();
     },
 
@@ -500,9 +446,9 @@ TC.chart = (() => {
       sinceSample += dt * 1000;
       while (sinceSample >= cfg.sampleMs) {
         sinceSample -= cfg.sampleMs;
-        history.push(live); hiArr.push(live); loArr.push(live); volArr.push(0);
+        history.push(live); hiArr.push(live); loArr.push(live);
         sampleN++;
-        if (history.length > MAX) { history.shift(); hiArr.shift(); loArr.shift(); volArr.shift(); }
+        if (history.length > MAX) { history.shift(); hiArr.shift(); loArr.shift(); }
         onSample(live);
       }
       secs += dt;
@@ -637,7 +583,6 @@ TC.chart = (() => {
       const now = performance.now(), fdt = lastDraw ? Math.min(0.1, (now - lastDraw) / 1000) : 0;
       lastDraw = now;
       if (!all) {
-        drawVolume(shiftNow);
         drawLevel(res, res && res.ath ? C.up : C.down, res && res.ath ? "ATH" : "R");
         drawLevel(sup, C.axis, "S");
         if (showMA) drawMA(shiftNow);
