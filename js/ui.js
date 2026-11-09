@@ -328,6 +328,10 @@ TC.ui = (() => {
       if (b) api.setChartRange(b.dataset.range);
     });
     api.setChartRange(st().settings.chartRange || "live");
+    const ma = $("maToggle");
+    ma.addEventListener("pointerdown", (e) => e.stopPropagation());
+    ma.addEventListener("click", () => api.setMA(!st().settings.ma));
+    api.setMA(!!st().settings.ma);
   }
 
   // ---- Achievements grid ----
@@ -480,6 +484,12 @@ TC.ui = (() => {
       st().settings.chart = m;
       TC.chart.setMode(m);
       document.querySelectorAll("#modeToggle button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
+    },
+
+    setMA(on) {
+      st().settings.ma = on;
+      TC.chart.setMA(on);
+      document.querySelector("#maToggle button").setAttribute("aria-pressed", String(on));
     },
 
     setChartRange(r) {

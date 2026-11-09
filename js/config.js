@@ -66,6 +66,19 @@ TC.config = {
     minSeconds: 60,
   },
   candleSamples: 8,      // chart samples per candle (8 x 250ms = 2s candles)
+  // Trader overlays on the LIVE chart (js/chart.js), cosmetic only. Lengths are in chart samples (250ms).
+  indicators: {
+    fast: 20, slow: 60,    // moving averages: 5s and 15s
+    crossPct: 0.002,       // MAs must be 0.2% of price apart to count as crossed (stops chop spam)
+    crossCooldown: 12,     // seconds between GOLDEN / DEATH CROSS labels
+    pivot: 12,             // a swing high/low is the extreme of the 3s either side of it
+    breakPct: 0.01,        // price must clear a level by 1% to call a BREAKOUT / BREAKDOWN
+    breakCooldown: 8,      // seconds between break labels
+    volBarPx: 6,           // volume bars: samples are grouped so each bar is at least this wide
+    volHeight: 0.14,       // volume bars: share of the plot height (max 46px)
+    volPerPct: 3,          // volume a market event adds per 1% it moves the price (a tap or buyer order is 1)
+    tagLife: 2.2,          // seconds a label floats
+  },
 
   // Market events (js/news.js)
   news: {

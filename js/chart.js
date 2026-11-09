@@ -8,6 +8,10 @@
 //   TC.chart.zoomY(f)    scale the price axis around the current price (f < 1 zooms in); settings.yZoom
 //   TC.chart.resetY()    back to the automatic price axis
 //   TC.chart.setRange(r) "live" (follows the price, zoomable) or "all" (the whole run since the IPO)
+//   TC.chart.setMA(on)   show the two moving averages (cross labels show either way)
+// Trader overlays on the LIVE view, all cosmetic: volume bars (trades per sample), support and
+// resistance at recent swing highs/lows with BREAKOUT / BREAKDOWN labels, and fast/slow moving
+// averages with GOLDEN CROSS / DEATH CROSS labels. They emit "breakout" and "maCross" events.
 window.TC = window.TC || {};
 
 TC.chart = (() => {
@@ -15,6 +19,7 @@ TC.chart = (() => {
   let canvas, ctx, w = 0, h = 0, dpr = 1;
   let history = [];      // close of each sample
   let hiArr = [], loArr = []; // high/low seen during each sample, for candle wicks
+  let volArr = [];       // trades (taps, buyer orders, sells) during each sample, for volume bars
   let mode = "line";     // "line" | "candles"
   let range = "live";    // "live" | "all"
   // Long-term record of the whole run for the ALL view, kept in the save (state.runChart):
@@ -37,7 +42,7 @@ TC.chart = (() => {
 
   function readColors() {
     const cs = getComputedStyle(document.documentElement);
-    for (const k of ["line", "core", "rule", "muted", "axis", "up", "down", "ink"]) {
+    for (const k of ["line", "core", "rule", "muted", "axis", "up", "down", "ink", "ma-fast", "ma-slow"]) {
       C[k] = cs.getPropertyValue("--" + k).trim();
     }
   }
@@ -49,6 +54,7 @@ TC.chart = (() => {
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    measureToggles();
   }
 
   // Pick a "nice" tick step (1, 2, 5 x 10^n) for a range.
@@ -213,6 +219,174 @@ TC.chart = (() => {
     }
   }
 
+  // ---- Trader overlays (LIVE view) ----
+  const IND = cfg.indicators;
+  let showMA = false;
+  let res = null, sup = null;   // { v, ath } levels being watched
+  let maSign = 0;               // +1 fast above slow, -1 below (with hysteresis)
+  let lastBreak = -1e9, lastCross = -1e9;
+  let tags = [];                // floating labels [{ n, v, text, color, t }], n = sample number
+  let secs = 0;                 // own clock for cooldowns
+
+  function resetInd() { res = sup = null; maSign = 0; tags = []; }
+  // Simple moving average of `len` closes ending at history index i
+  function sma(i, len) {
+    const a = Math.max(0, i - len + 1);
+    let sum = 0;
+    for (let k = a; k <= i; k++) sum += history[k];
+    return sum / (i - a + 1);
+  }
+  function addTag(text, color, v) {
+    tags.push({ n: sampleN, v, text, color, t: 0 });
+    if (tags.length > 6) tags.shift();
+  }
+  // Swing levels: a sample that is the high (low) of the samples `w` either side of it.
+  // Resistance is the nearest swing high above the price (or your all-time high), support the nearest swing low below.
+  function findLevels(live) {
+    const n = history.length, wv = IND.pivot, a = visStart() + wv, b = n - 1 - wv;
+    let r = Infinity, s = -Infinity;
+    for (let i = a; i <= b; i++) {
+      const v = history[i];
+      if (v > live * 1.002 && v < r || v < live * 0.998 && v > s) {
+        let hi = true, lo = true;
+        for (let k = i - wv; k <= i + wv && (hi || lo); k++) {
+          if (history[k] > v) hi = false;
+          if (history[k] < v) lo = false;
+        }
+        if (hi && v > live * 1.002 && v < r) r = v;
+        if (lo && v < live * 0.998 && v > s) s = v;
+      }
+    }
+    const best = (TC.state && TC.state.data.bestPrice) || 0;
+    if (!isFinite(r) && best > live * 1.002) res = { v: best, ath: true };
+    else res = isFinite(r) ? { v: r, ath: false } : null;
+    sup = isFinite(s) && s > 0 ? { v: s } : null;
+  }
+  // Runs once per new chart sample
+  function onSample(live) {
+    if (!(live > 0) || !TC.state || !TC.state.data.listed) return;
+    // Breaks of the levels we were watching
+    if (res && live > res.v * (1 + IND.breakPct)) {
+      if (!res.ath && secs - lastBreak > IND.breakCooldown) {
+        lastBreak = secs;
+        addTag("BREAKOUT", C.up, res.v);
+        TC.events.emit("breakout", { dir: "up", level: res.v });
+      }
+      res = null;
+    }
+    if (sup && live < sup.v * (1 - IND.breakPct)) {
+      if (secs - lastBreak > IND.breakCooldown) {
+        lastBreak = secs;
+        addTag("BREAKDOWN", C.down, sup.v);
+        TC.events.emit("breakout", { dir: "down", level: sup.v });
+      }
+      sup = null;
+    }
+    findLevels(live);
+    // Moving average cross, with a little hysteresis so chop doesn't spam labels
+    const L = history.length - 1;
+    const f = sma(L, IND.fast), sl = sma(L, IND.slow);
+    const d = (f - sl) / Math.max(1e-9, live);
+    const sign = d > IND.crossPct ? 1 : d < -IND.crossPct ? -1 : 0;
+    if (sign && sign !== maSign) {
+      if (maSign && secs - lastCross > IND.crossCooldown) {
+        lastCross = secs;
+        addTag(sign > 0 ? "GOLDEN CROSS" : "DEATH CROSS", sign > 0 ? C["ma-fast"] : C.down, (f + sl) / 2);
+        TC.events.emit("maCross", { dir: sign > 0 ? "golden" : "death" });
+      }
+      maSign = sign;
+    }
+  }
+
+  // Bars are grouped so each is at least IND.volBarPx wide whatever the zoom (grouped like candles,
+  // aligned to the newest sample so the forming bar is always on the right)
+  function drawVolume(shift) {
+    const n = history.length, vs = visStart();
+    const step = plotW() / (span - 1);
+    const K = Math.max(1, Math.ceil(IND.volBarPx / step));
+    let first = (n - 1) % K;
+    while (first + K < vs) first += K;
+    const groups = [];
+    let max = 4 * K;
+    for (let end = first; end < n; end += K) {
+      const a = Math.max(1, end - K + 1);
+      let v = 0;
+      for (let i = a; i <= end; i++) v += volArr[i];
+      if (v > max) max = v;
+      groups.push({ a, end, v });
+    }
+    // Sit the bars on top of the LIVE / Line / MA buttons so they aren't hidden behind them
+    const bot = Math.min(h - pad.b, togglesTop - 4), H = Math.min(46, plotH() * IND.volHeight);
+    const bw = Math.max(1, step * K * 0.72);
+    for (const g of groups) {
+      if (!g.v) continue;
+      const x = (xOf(g.a, g.a === n - 1 ? 0 : shift) + xOf(g.end, g.end === n - 1 ? 0 : shift)) / 2;
+      const bh = Math.max(1, H * Math.sqrt(g.v / max)); // sqrt so a crash spike doesn't flatten everyday tapping
+      ctx.fillStyle = (history[g.end] >= history[g.a - 1] ? C.up : C.down) + "73";
+      ctx.fillRect(x - bw / 2, bot - bh, bw, bh);
+    }
+  }
+
+  function drawLevel(lv, color, text) {
+    if (!lv) return;
+    const y = Math.round(yOf(lv.v)) + 0.5;
+    if (y < pad.t || y > h - pad.b) return;
+    ctx.strokeStyle = color + "59"; ctx.lineWidth = 1; ctx.setLineDash([6, 5]);
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke(); ctx.setLineDash([]);
+    ctx.font = '500 9px "IBM Plex Mono", monospace'; ctx.fillStyle = color + "b3";
+    ctx.textAlign = "left"; ctx.textBaseline = text === "S" ? "top" : "bottom";
+    ctx.fillText(text + " " + TC.format.axis(TC.market.px(lv.v)), pad.l + 4, text === "S" ? y + 3 : y - 3);
+  }
+
+  function drawMA(shift) {
+    const n = history.length, vs = Math.max(0, visStart());
+    ctx.lineJoin = "round"; ctx.lineWidth = 1.3;
+    for (const [len, color] of [[IND.slow, C["ma-slow"]], [IND.fast, C["ma-fast"]]]) {
+      ctx.strokeStyle = color + "cc";
+      ctx.beginPath();
+      for (let i = vs; i < n; i++) {
+        const x = xOf(i, i === n - 1 ? 0 : shift), y = yOf(sma(i, len));
+        i === vs ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+  }
+
+  function drawTags(shift, dt) {
+    const life = IND.tagLife;
+    tags = tags.filter((t) => t.t < life);
+    ctx.font = '700 10px "IBM Plex Mono", monospace';
+    const placed = [];
+    for (const t of tags) {
+      t.t += dt;
+      const a = Math.min(1, t.t / 0.15, (life - t.t) / 0.6);
+      const x = Math.min(w - pad.r - 8, xOf(history.length - 1 - (sampleN - t.n), shift));
+      let y = Math.max(pad.t + 30, Math.min(h - pad.b - 30, yOf(t.v))) - 16 - t.t * 6;
+      const tw = ctx.measureText(t.text).width + 12;
+      const lx = Math.min(w - pad.r - tw - 4, Math.max(pad.l, x - tw / 2));
+      // Don't let two labels sit on top of each other
+      while (placed.some((q) => lx < q.x + q.w && q.x < lx + tw && Math.abs(q.y - y) < 20)) y -= 21;
+      placed.push({ x: lx, y, w: tw });
+      ctx.globalAlpha = Math.max(0, a);
+      ctx.fillStyle = C.ink + "d9"; ctx.strokeStyle = t.color; ctx.lineWidth = 1;
+      ctx.shadowColor = t.color; ctx.shadowBlur = 10;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(lx, y - 9, tw, 18, 9); else ctx.rect(lx, y - 9, tw, 18);
+      ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
+      ctx.fillStyle = t.color; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(t.text, lx + tw / 2, y + 0.5);
+      ctx.globalAlpha = 1;
+    }
+  }
+  let lastDraw = 0;
+  let togglesTop = Infinity;   // top of the chart buttons, in canvas px
+  function measureToggles() {
+    const el = document.querySelector(".chart-toggles");
+    if (!el || !canvas) return;
+    const a = el.getBoundingClientRect(), c = canvas.getBoundingClientRect();
+    togglesTop = a.height ? a.top - c.top : Infinity;
+  }
+
   const api = {
     init(el) {
       const saved = TC.state && TC.state.data.settings.zoom;
@@ -224,7 +398,20 @@ TC.chart = (() => {
       readColors();
       resize();
       window.addEventListener("resize", resize);
+      showMA = !!(TC.state && TC.state.data.settings.ma);
+      // Volume: taps and buyer orders count one trade each; market events (crashes, pumps, silent
+      // moves) count by how far they moved the price, so a 30% crash is a tall bar however it was made.
+      const add = (v) => { if (volArr.length) volArr[volArr.length - 1] += v; };
+      TC.events.on("buy", () => add(1));
+      TC.events.on("order", () => add(1));
+      const moved = (e) => {
+        const q = TC.market.quote();
+        add((e && e.manual ? 1 : 0) + (e && e.amount > 0 && q > 0 ? IND.volPerPct * 100 * e.amount / q : 0));
+      };
+      TC.events.on("sell", moved);
+      TC.events.on("rally", moved);
       api.clear();
+      setTimeout(measureToggles, 0);
     },
 
     clear() {
@@ -237,6 +424,8 @@ TC.chart = (() => {
     fill(value) {
       history = new Array(MAX).fill(value);
       hiArr = history.slice(); loArr = history.slice();
+      volArr = new Array(MAX).fill(0);
+      resetInd();
     },
 
     // Fill the history with a made-up but believable path that ends exactly at `to`
@@ -263,6 +452,9 @@ TC.chart = (() => {
         history[i] = v; hiArr[i] = v + w; loArr[i] = Math.max(0, v - w);
       }
       history[n - 1] = hiArr[n - 1] = loArr[n - 1] = to;
+      // Believable made-up volume: light, with bursts on the bigger moves
+      volArr = history.map((v, i) => i ? Math.round(Math.random() * 2 + Math.abs(v / history[i - 1] - 1) * 150) : 0);
+      resetInd();
     },
 
     snapshot() { return history.slice(); },
@@ -270,6 +462,8 @@ TC.chart = (() => {
       if (!Array.isArray(arr) || !arr.length) return;
       history = arr.slice(-MAX);
       hiArr = history.slice(); loArr = history.slice();
+      volArr = new Array(history.length).fill(0);
+      resetInd();
     },
 
     // Drop a marker at "now" on both views (e.g. "10:1" for a stock split)
@@ -281,6 +475,8 @@ TC.chart = (() => {
     },
     range: () => range,
     setRange(r) { range = r === "all" ? "all" : "live"; },
+    ma: () => showMA,
+    setMA(on) { showMA = !!on; },
     mode: () => mode,
     setMode(m) { mode = m === "candles" ? "candles" : "line"; },
 
@@ -304,10 +500,12 @@ TC.chart = (() => {
       sinceSample += dt * 1000;
       while (sinceSample >= cfg.sampleMs) {
         sinceSample -= cfg.sampleMs;
-        history.push(live); hiArr.push(live); loArr.push(live);
+        history.push(live); hiArr.push(live); loArr.push(live); volArr.push(0);
         sampleN++;
-        if (history.length > MAX) { history.shift(); hiArr.shift(); loArr.shift(); }
+        if (history.length > MAX) { history.shift(); hiArr.shift(); loArr.shift(); volArr.shift(); }
+        onSample(live);
       }
+      secs += dt;
       const L = history.length - 1;
       history[L] = live;
       if (live > hiArr[L]) hiArr[L] = live;
@@ -435,8 +633,19 @@ TC.chart = (() => {
         for (const m of liveMarks) drawMark(xOf(history.length - 1 - (sampleN - m.n), shift), m.label);
       }
 
+      const shiftNow = sinceSample / cfg.sampleMs;
+      const now = performance.now(), fdt = lastDraw ? Math.min(0.1, (now - lastDraw) / 1000) : 0;
+      lastDraw = now;
+      if (!all) {
+        drawVolume(shiftNow);
+        drawLevel(res, res && res.ath ? C.up : C.down, res && res.ath ? "ATH" : "R");
+        drawLevel(sup, C.axis, "S");
+        if (showMA) drawMA(shiftNow);
+      }
+
       if (mode === "candles") {
         all ? drawCandlesAll() : drawCandles();
+        if (!all) drawTags(shiftNow, fdt);
         ctx.restore();
       } else {
       // Soft area under the line
@@ -464,6 +673,7 @@ TC.chart = (() => {
       ctx.strokeStyle = C.core;
       ctx.lineWidth = 1.4;
       strokeLine();
+      if (!all) drawTags(shiftNow, fdt);
       ctx.restore();
       }
 
