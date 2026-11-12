@@ -21,3 +21,14 @@ TC.format = {
   pct(n) { return (n >= 0 ? "+" : "") + (n * 100).toFixed(2) + "%"; },
   int(n) { return Math.floor(n).toLocaleString("en-US"); },
 };
+
+// Canvas font strings. Themes swap the families (themes.js sets TC.fontSet); sizes scale with the set.
+TC.fontSet = {
+  data: '"IBM Plex Mono", monospace',
+  display: '"Bricolage Grotesque", system-ui, sans-serif',
+  scale: 1, weight: null,
+};
+TC.font = (weight, size, kind) => {
+  const f = TC.fontSet;
+  return (f.weight || weight) + " " + Math.round(size * f.scale * 10) / 10 + "px " + (kind === "display" ? f.display : f.data);
+};
