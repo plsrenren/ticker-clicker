@@ -1,0 +1,78 @@
+/* SELL during a peak window, per theme (ui.js sets the classes):
+   .peak  any peak bonus (2x and up)
+   .max   the top of the peak: 3x, or 4x in a bull market
+   Loaded after the theme sheets so each look can restyle its own button. */
+
+/* ---------- Classic: white-hot core at 2x; gold jackpot with a light sweep at 3x/4x ---------- */
+.sell-btn.max {
+  color: #030605;
+  background: linear-gradient(100deg, var(--up), var(--core) 48%, var(--ma-fast));
+  border-color: var(--ma-fast);
+  box-shadow: 0 0 0 2px var(--ma-fast), 0 0 34px color-mix(in srgb, var(--ma-fast) 80%, transparent);
+  animation: sell-max-pulse 0.5s ease-in-out infinite;
+}
+.sell-btn.max > span { z-index: 1; }
+.sell-btn.max::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(100deg, transparent 30%, #ffffffb0 50%, transparent 70%);
+  transform: translateX(-110%); animation: sell-sheen 1.1s ease-in-out infinite;
+}
+@keyframes sell-max-pulse { 50% { box-shadow: 0 0 0 3px var(--ma-fast), 0 0 54px color-mix(in srgb, var(--ma-fast) 95%, transparent); } }
+@keyframes sell-sheen { 60%, 100% { transform: translateX(110%); } }
+
+/* ---------- Sketchbook (Dusk and Midnight): yellow highlighter, then hatched and wiggling ---------- */
+html.theme-sketch .sell-btn.peak { background: var(--grain), #f3cf6e !important; color: var(--pen); box-shadow: 0 3px 0 #2b2224 !important; animation: none; }
+html.theme-sketch .sell-btn.peak .sell-sub { color: var(--pen); }
+html.theme-sketch .sell-btn.max {
+  background: var(--grain), repeating-linear-gradient(-45deg, #f3cf6e 0 7px, #ffe597 7px 13px) !important;
+  box-shadow: 0 4px 0 #2b2224 !important;
+  animation: sk-sell-wiggle 0.66s steps(1) infinite;
+}
+html.theme-sketch .sell-btn.max::after {
+  content: "★"; transform: none; inset: auto 10px auto auto; top: 50%; margin-top: -0.6em; background: none;
+  font: 700 22px var(--font-display); color: var(--down); -webkit-text-stroke: 1.5px #2b2224; animation: sk-star 0.66s steps(1) infinite;
+}
+@keyframes sk-sell-wiggle { 0% { transform: rotate(-1.2deg); } 33% { transform: rotate(0.8deg) scale(1.02); } 66% { transform: rotate(-0.3deg) scale(1.01); } }
+@keyframes sk-star { 0% { transform: rotate(-12deg) scale(1); } 33% { transform: rotate(10deg) scale(1.15); } 66% { transform: rotate(0) scale(0.95); } }
+
+/* ---------- Ticker Tape 1929: red ink at 2x; a stamped EXTRA! edition at 3x/4x ---------- */
+html.theme-tape .sell-btn.peak { background: #f3d6c8; border-style: double; border-width: 4px; color: var(--down); box-shadow: 3px 3px 0 var(--down); animation: none; }
+html.theme-tape .sell-btn.max {
+  background: var(--down); color: #f3e9d0; border: 2px solid #2b2117; box-shadow: 4px 4px 0 #2b2117;
+  animation: tape-sell-thump 1s steps(1) infinite;
+}
+html.theme-tape .sell-btn.max::after {
+  content: "EXTRA!"; inset: auto 8px auto auto; top: 6px; transform: rotate(8deg); background: #f3e9d0; animation: none;
+  padding: 1px 5px; border: 1.5px solid #2b2117; color: #2b2117; font: 700 11px "Old Standard TT", serif; letter-spacing: 0.06em;
+}
+@keyframes tape-sell-thump { 0% { transform: translate(0, 0); } 8% { transform: translate(1px, 1px); } 16% { transform: translate(0, 0); } }
+
+/* ---------- Arcade CRT: magenta at 2x; flashing BONUS colours at 3x/4x ---------- */
+html.theme-arcade .sell-btn.peak { background: #ff4f8b; color: #fff; animation: none;
+  box-shadow: 0 -4px 0 0 #ffd0e0, 0 4px 0 0 #8a1d48, -4px 0 0 0 #ffd0e0, 4px 0 0 0 #8a1d48, 0 0 26px #ff4f8b; }
+html.theme-arcade .sell-btn.max { color: #0b0820; animation: arcade-sell-flash 0.36s steps(1) infinite; }
+html.theme-arcade .sell-btn.max::after {
+  content: "BONUS"; inset: auto 6px auto auto; top: 5px; transform: none; background: none; animation: blink 0.36s steps(2, start) infinite;
+  font: 7px "Press Start 2P", monospace; color: #0b0820;
+}
+@keyframes arcade-sell-flash {
+  0% { background: #ffd23f; box-shadow: 0 -4px 0 0 #fff6c2, 0 4px 0 0 #a9831a, -4px 0 0 0 #fff6c2, 4px 0 0 0 #a9831a, 0 0 30px #ffd23f; }
+  50% { background: #43f2ff; box-shadow: 0 -4px 0 0 #d6fdff, 0 4px 0 0 #1b7f8a, -4px 0 0 0 #d6fdff, 4px 0 0 0 #1b7f8a, 0 0 30px #43f2ff; }
+}
+
+/* ---------- Chalkboard: yellow chalk at 2x; circled twice with chalk marks at 3x/4x ---------- */
+html.theme-chalk .sell-btn.peak { border-color: #f5df8e; color: #fbe9a6; background: #f5df8e14; box-shadow: none; animation: none; text-shadow: 0 0 6px #f5df8e66; }
+html.theme-chalk .sell-btn.max {
+  background: #f5df8e26; border-width: 3px;
+  box-shadow: 0 0 0 4px var(--ink), 0 0 0 6.5px #f5df8eaa, 0 0 14px #f5df8e66;
+  animation: chalk-sell-wobble 0.9s ease-in-out infinite;
+}
+html.theme-chalk .sell-btn.max::after {
+  content: "!!"; inset: auto 16px auto auto; top: 50%; margin-top: -0.62em; transform: rotate(10deg); background: none; animation: none;
+  font: 700 26px var(--font-display); color: #f5df8e; text-shadow: 0 0 6px #f5df8e88;
+}
+@keyframes chalk-sell-wobble { 50% { transform: rotate(-1deg) scale(1.02); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .sell-btn.max, .sell-btn.max::after { animation: none !important; }
+}

@@ -428,6 +428,7 @@ TC.ui = (() => {
       sb.style.setProperty("--cd", (cd / cfg.sell.cooldown).toFixed(3));
       const bonus = TC.market.sellBonus();
       sb.classList.toggle("peak", bonus > 1 && TC.market.canSell());
+      sb.classList.toggle("max", bonus >= 3 && TC.market.canSell()); // top of the peak: 3x, 4x in a bull run (css/sell-peak.css)
       sb.classList.toggle("risky", bonus <= 1 && TC.market.canSell() && TC.market.sellingIntoCrash());
       $("sellSub").textContent =
         st().basePrice < cfg.sell.minPrice ? "Reach " + f.money(cfg.sell.minPrice) :
