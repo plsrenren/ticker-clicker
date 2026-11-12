@@ -160,6 +160,7 @@ TC.sound = (() => {
       E.on("chargeMax", () => { tone({ freq: 660, to: 1320, type: "triangle", dur: 0.16, vol: 0.28 }); tone({ freq: 1320, type: "sine", dur: 0.2, vol: 0.18, delay: 0.12 }); });
       E.on("chargeRelease", ({ max }) => { if (max) sfx.bassHit(); else tone({ freq: 220, to: 440, type: "triangle", dur: 0.12, vol: 0.25 }); });
       E.on("achievement", () => sfx.sparkle());
+      E.on("themeUnlock", () => sfx.sparkle());
       E.on("ipo", () => sfx.bell());
       E.on("private", () => sfx.bigChord());
       E.on("offline", () => sfx.coins());

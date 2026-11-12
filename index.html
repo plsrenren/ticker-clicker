@@ -7,8 +7,9 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#030605">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=Gaegu:wght@400;700&display=swap">
 <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/theme-sketch.css">
 </head>
 <body>
 
@@ -110,6 +111,8 @@
         <ul id="ownedUpgrades" class="list owned-list" hidden></ul>
       </section>
       <section class="pane" data-pane="trophies" hidden>
+        <div class="ach-head"><h2 class="desk-title">Themes</h2><span class="ach-count" id="themeCount">1/3</span></div>
+        <div class="theme-row" id="themeRow" role="group" aria-label="Themes"></div>
         <div class="ach-head"><h2 class="desk-title">Achievements</h2><span class="ach-count" id="achCount">0/20</span></div>
         <ul class="ach-grid" id="achGrid"></ul>
         <p class="desk-note" id="holdings"></p>
@@ -126,6 +129,18 @@
   <span class="toast-tag">Achievement</span>
   <span class="toast-name" id="toastName"></span>
   <span class="toast-desc" id="toastDesc"></span>
+</div>
+
+<div class="unlock" id="unlock" hidden role="dialog" aria-modal="true" aria-labelledby="unlockTitle">
+  <div class="unlock-card">
+    <p class="unlock-eyebrow">Run complete</p>
+    <h1 class="unlock-title" id="unlockTitle">New look unlocked!</h1>
+    <div class="unlock-swatch"><span class="theme-swatch"><i></i></span></div>
+    <p class="unlock-name" id="unlockName">Sketchbook</p>
+    <p class="unlock-sub" id="unlockSub"></p>
+    <div class="unlock-btns"><button type="button" class="unlock-wear" id="unlockWear">Wear it now</button><button type="button" class="unlock-later" id="unlockLater">Later</button></div>
+    <p class="unlock-next" id="unlockNext"></p>
+  </div>
 </div>
 
 <div class="ipo offline" id="offline" hidden>
@@ -174,6 +189,7 @@
 <script src="js/offline.js"></script>
 <script src="js/achievements.js"></script>
 <script src="js/rivals.js"></script>
+<script src="js/themes.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/ipo.js"></script>
 <script src="js/main.js"></script>

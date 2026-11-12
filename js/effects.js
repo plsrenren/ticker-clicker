@@ -85,7 +85,7 @@ TC.effects = (() => {
           if (glyph) {
             g.translate(x, y);
             g.rotate(spin * t);
-            g.font = `800 ${size}px "Bricolage Grotesque", system-ui, sans-serif`;
+            g.font = TC.font(800, size, "display");
             g.textAlign = "center";
             g.textBaseline = "middle";
             g.fillText("$", 0, 0);
@@ -267,7 +267,7 @@ TC.effects = (() => {
           g.fillStyle = color;
           g.shadowColor = color;
           g.shadowBlur = (16) * glow();
-          g.font = `800 ${size}px "Bricolage Grotesque", system-ui, sans-serif`;
+          g.font = TC.font(800, size, "display");
           g.textAlign = "center";
           g.fillText(text, x, y - 40 * p);
           g.shadowBlur = 0;
@@ -372,7 +372,7 @@ TC.effects = (() => {
         g.fillStyle = color;
         g.shadowColor = color;
         g.shadowBlur = (i === 0 ? 18 + it.pop * 14 : 0) * glow();
-        g.font = `800 ${size}px "Bricolage Grotesque", system-ui, sans-serif`;
+        g.font = TC.font(800, size, "display");
         g.fillText((it.sign > 0 ? "$" : "-$") + TC.format.money(it.amount).slice(1), b.r - 14, it.y);
         y += size * 0.95;
       });
@@ -432,7 +432,7 @@ TC.effects = (() => {
     }
     // tag
     const label = (c.max ? "MAX  " : "") + "+" + TC.format.money(add);
-    g.font = '700 13px "IBM Plex Mono", monospace';
+    g.font = TC.font(700, 13);
     const lw = g.measureText(label).width + 16;
     const lx = b.r - lw - 8, ly = Math.max(b.t + 2, y - 24);
     g.fillStyle = c.max ? C.core : C.line;
@@ -451,6 +451,7 @@ TC.effects = (() => {
     kinds,
     feed,
     shake,
+    refreshColors() { C = { up: token("up"), line: token("line"), down: token("down"), core: token("core") }; },
     init(el) {
       canvas = el;
       ctx = canvas.getContext("2d");

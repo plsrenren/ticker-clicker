@@ -142,7 +142,7 @@ TC.chart = (() => {
     const top = pad.t, bot = h - pad.b;
     ctx.strokeStyle = C.core + "88"; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
     ctx.beginPath(); ctx.moveTo(Math.round(x) + 0.5, top + 18); ctx.lineTo(Math.round(x) + 0.5, bot); ctx.stroke(); ctx.setLineDash([]);
-    ctx.font = '600 10px "IBM Plex Mono", monospace';
+    ctx.font = TC.font(600, 10);
     const tw = ctx.measureText(label).width + 10;
     const lx = Math.min(w - pad.r - tw, Math.max(pad.l, x - tw / 2));
     ctx.fillStyle = C.core;
@@ -302,7 +302,7 @@ TC.chart = (() => {
     if (y < pad.t || y > h - pad.b) return;
     ctx.strokeStyle = color + "59"; ctx.lineWidth = 1; ctx.setLineDash([6, 5]);
     ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke(); ctx.setLineDash([]);
-    ctx.font = '500 9px "IBM Plex Mono", monospace'; ctx.fillStyle = color + "b3";
+    ctx.font = TC.font(500, 9); ctx.fillStyle = color + "b3";
     ctx.textAlign = "left"; ctx.textBaseline = text === "S" ? "top" : "bottom";
     ctx.fillText(text + " " + TC.format.axis(TC.market.px(lv.v)), pad.l + 4, text === "S" ? y + 3 : y - 3);
   }
@@ -324,7 +324,7 @@ TC.chart = (() => {
   function drawTags(shift, dt) {
     const life = IND.tagLife;
     tags = tags.filter((t) => t.t < life);
-    ctx.font = '700 10px "IBM Plex Mono", monospace';
+    ctx.font = TC.font(700, 10);
     const placed = [];
     for (const t of tags) {
       t.t += dt;
@@ -350,6 +350,7 @@ TC.chart = (() => {
   let lastDraw = 0;
 
   const api = {
+    refreshColors() { readColors(); },
     init(el) {
       const saved = TC.state && TC.state.data.settings.zoom;
       if (saved) span = clampSpan(saved);
@@ -510,7 +511,7 @@ TC.chart = (() => {
 
       // Grid + y labels
       const step = niceStep(yMax - yMin, 5);
-      ctx.font = '500 10px "IBM Plex Mono", monospace';
+      ctx.font = TC.font(500, 10);
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
       for (let v = Math.ceil(yMin / step) * step; v <= yMax; v += step) {
@@ -566,7 +567,7 @@ TC.chart = (() => {
         const y = Math.round(yOf(best)) + 0.5;
         ctx.strokeStyle = C.up + "66"; ctx.lineWidth = 1; ctx.setLineDash([2, 4]);
         ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke(); ctx.setLineDash([]);
-        ctx.font = '500 10px "IBM Plex Mono", monospace'; ctx.fillStyle = C.up; ctx.textAlign = "left"; ctx.textBaseline = "bottom";
+        ctx.font = TC.font(500, 10); ctx.fillStyle = C.up; ctx.textAlign = "left"; ctx.textBaseline = "bottom";
         ctx.fillText("ATH " + TC.format.axis(TC.market.px(best)), pad.l + 4, y - 3);
       }
 
@@ -636,7 +637,7 @@ TC.chart = (() => {
 
       // Price tag pill: green, flashes red on a sell
       const label = TC.format.axis(TC.market.px(history[n - 1]));
-      ctx.font = '600 11px "IBM Plex Mono", monospace';
+      ctx.font = TC.font(600, 11);
       const lw = ctx.measureText(label).width + 14;
       const ly = Math.max(pad.t, Math.min(h - pad.b, t.y));
       const tagColor = tagFlash.t > 0 && tagFlash.kind === "down" ? C.down : C.up;

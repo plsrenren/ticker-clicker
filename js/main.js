@@ -10,6 +10,7 @@ window.TC = window.TC || {};
     TC.state.load();
     if (hotData && hotData.state) Object.assign(TC.state.data, hotData.state);
 
+    TC.themes.init();
     TC.chart.init($("chart"));
     TC.effects.init($("fx"));
     TC.ui.init();
