@@ -7,9 +7,13 @@ TC.prestige = (() => {
   const st = () => TC.state.data;
 
   const api = {
+    // Points grow with each 10x of your best price (log scale), so a long run can't snowball the next one.
     // Your stake scales the payout: 5% is 1x, 10% is 2x, capped 0.25x-3x. Always at least 1 point.
     stakeMult() { return Math.max(0.25, Math.min(3, TC.market.stakePct() / cfg.prestige.stakeBase)); },
-    pointsFor(best) { return Math.max(1, Math.floor(Math.sqrt(best / cfg.prestige.scale) * api.stakeMult())); },
+    pointsFor(best) {
+      const decades = Math.log10(Math.max(1, best / cfg.prestige.scale));
+      return Math.max(1, Math.floor(cfg.prestige.perDecade * decades * api.stakeMult()));
+    },
     unlocked() { return st().listed && st().bestPrice >= cfg.prestige.minPrice; },
     available() { return api.unlocked() ? api.pointsFor(st().bestPrice) : 0; },
 
