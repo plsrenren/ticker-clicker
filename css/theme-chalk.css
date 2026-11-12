@@ -1,0 +1,71 @@
+/* Chalkboard theme (js/themes.js), unlocked by earning every achievement: chalk on slate, a wooden frame and tray, smudgy erasing behind the price */
+html.theme-chalk {
+  --ink: #26332d; --panel: #2e3c35; --rule: #f4f1e61f; --text: #f3f1e8; --muted: #b3bdb5; --axis: #c9d1c9;
+  --line: #f6f3e6; --core: #ffffff; --up: #a6e8b6; --down: #f6a7a2; --ma-fast: #f5df8e; --ma-slow: #a3cdf2;
+  --font-display: "Cabin Sketch", "Chalkboard SE", cursive;
+  --font-data: "Cabin Sketch", "Chalkboard SE", cursive;
+}
+html.theme-chalk body {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(60% 40% at 25% 30%, #ffffff0f, #0000 70%),
+    radial-gradient(50% 35% at 80% 70%, #ffffff0b, #0000 70%),
+    #26332d;
+  color: var(--text);
+}
+html.theme-chalk .app { font-family: var(--font-data); }
+html.theme-chalk .app::after { box-shadow: inset 0 0 0 10px #7a5634, inset 0 0 0 12px #4e3520, inset 0 0 50px #0008 !important; }
+html.theme-chalk .tape, html.theme-chalk .dock { padding-inline: 26px; }
+html.theme-chalk .rivals { margin-top: 12px; margin-inline: 12px; border-bottom: 1px dashed #f3f1e655; }
+html.theme-chalk .rv { font-family: var(--font-data); font-size: 13px; }
+html.theme-chalk .rv-you { background: transparent; box-shadow: none; border: 1.5px solid var(--up); border-radius: 40% 55% 45% 60% / 60% 45% 55% 40%; }
+html.theme-chalk .chart-wrap, :root.theme-chalk[data-season] .chart-wrap { background: transparent; margin-inline: 12px; }
+html.theme-chalk .symbol { font-weight: 700; font-size: 24px; }
+html.theme-chalk .price { font-weight: 700; letter-spacing: 0; text-shadow: 0 0 6px #ffffff40; }
+html.theme-chalk .price.tick-up { text-shadow: 0 0 8px #a6e8b660; }
+html.theme-chalk .price.tick-down { text-shadow: 0 0 8px #f6a7a260; }
+html.theme-chalk .cap-label, html.theme-chalk .stats dt { font-family: var(--font-display); letter-spacing: .06em; font-size: 12px; }
+html.theme-chalk .stats dd, html.theme-chalk .share-price, html.theme-chalk .change { font-weight: 700; font-size: 17px; }
+html.theme-chalk .stats { border-top: 2px solid #f3f1e633; padding-top: 6px; }
+html.theme-chalk .chart-hint { font-family: var(--font-display); color: var(--muted); }
+html.theme-chalk .mode-toggle { background: transparent; border: 1.5px solid #f3f1e666; border-radius: 12px 8px 14px 6px; }
+html.theme-chalk .mode-toggle button { font-family: var(--font-data); }
+html.theme-chalk .mode-toggle button[aria-pressed="true"] { background: #f3f1e622; color: var(--text); }
+html.theme-chalk .hype-btn { background: transparent; border: 2px solid #f3f1e6aa; color: var(--text); border-radius: 18px 6px 16px 8px / 8px 16px 6px 18px; }
+html.theme-chalk .hype-name { font-family: var(--font-display); font-weight: 700; }
+html.theme-chalk .sell-btn { background: transparent; border: 2.5px solid var(--down); border-radius: 30px 12px 26px 14px / 14px 26px 12px 30px; }
+html.theme-chalk .sell-word { font-family: var(--font-display); font-weight: 700; font-size: 19px; }
+html.theme-chalk .desk-btn { background: #f3f1e6; color: #26332d; border-radius: 26px 10px 22px 12px / 12px 22px 10px 26px; font-weight: 700; }
+html.theme-chalk .news { background: #26332de8; border: 2px dashed var(--tone); border-radius: 8px 18px 10px 16px; box-shadow: none; }
+html.theme-chalk .news-tag { background: transparent; color: var(--tone); border: 1.5px solid var(--tone); font-family: var(--font-display); font-size: 12px; animation: none; }
+html.theme-chalk .news-text { font-family: var(--font-display); font-weight: 700; }
+html.theme-chalk .desk { background: #26332df5; backdrop-filter: none; border-top: 10px solid #7a5634; border-radius: 0; }
+html.theme-chalk .item { background: transparent; border: 1.5px solid #f3f1e640; border-radius: 14px 6px 12px 8px; }
+html.theme-chalk .item-name { font-family: var(--font-display); font-weight: 700; }
+.unlock[data-theme="chalk"] .unlock-card { background: #26332d; color: #f3f1e8; border-radius: 4px; box-shadow: 0 0 0 10px #7a5634, 0 0 0 12px #4e3520, 0 20px 50px #000a; font-family: "Cabin Sketch", cursive; border: 0; }
+.unlock[data-theme="chalk"] .unlock-eyebrow { font: 700 17px "Cabin Sketch", cursive; color: #b3bdb5; }
+.unlock[data-theme="chalk"] .unlock-title { font: 700 34px "Cabin Sketch", cursive; color: #f5df8e; text-shadow: 0 0 8px #f5df8e55; }
+.unlock[data-theme="chalk"] .unlock-swatch { background: transparent; box-shadow: none; border: 2px dashed #f3f1e6aa; border-radius: 14px 6px 12px 8px; }
+.unlock[data-theme="chalk"] .unlock-name { font: 700 26px "Cabin Sketch", cursive; }
+.unlock[data-theme="chalk"] .unlock-sub, .unlock[data-theme="chalk"] .unlock-next { font: 18px "Cabin Sketch", cursive; color: #c9d1c9; }
+.unlock[data-theme="chalk"] .unlock-btns button { font: 700 20px "Cabin Sketch", cursive; background: #f3f1e6; color: #26332d; box-shadow: none; border-radius: 22px 8px 18px 10px / 10px 18px 8px 22px; }
+.unlock[data-theme="chalk"] .unlock-btns .unlock-later { background: transparent; color: #f3f1e6; border: 2px solid #f3f1e6aa; }
+html.theme-chalk .news { z-index: 3; }
+
+html.theme-chalk .toast { background: #26332df2; border: 2px dashed #f5df8e; border-radius: 10px 16px 8px 14px; box-shadow: 0 10px 24px #0008; }
+html.theme-chalk .toast-tag { background: transparent; color: #f5df8e; border: 1.5px solid #f5df8e; }
+html.theme-chalk .toast-name { font-family: var(--font-display); font-weight: 700; }
+html.theme-chalk .ach { border-radius: 12px 6px 10px 8px; }
+html.theme-chalk .ach-name { font-weight: 700; }
+html.theme-chalk .theme-opt { background: transparent; border-radius: 12px 6px 10px 8px; }
+/* Chalk tray along the bottom of the board, with chalk sticks and an eraser */
+html.theme-chalk .chart-wrap::after {
+  content: ""; position: absolute; z-index: 1; pointer-events: none; height: 17px;
+  left: calc(var(--plot-l, 10px) - 12px); right: var(--plot-r, 0px); bottom: calc(var(--plot-b, 26px) - 10px);
+  background:
+    linear-gradient(#f6f3e6, #f6f3e6) 22% 2px / 38px 6px no-repeat,
+    linear-gradient(#f5df8e, #f5df8e) calc(22% + 46px) 3px / 22px 5px no-repeat,
+    linear-gradient(#c9b48a 0 45%, #3b3b45 45%) 82% 0 / 60px 8px no-repeat,
+    linear-gradient(#8a6340, #6a4a2c 70%, #4e3520) 0 8px / 100% 9px no-repeat;
+  filter: drop-shadow(0 3px 4px #0006);
+}

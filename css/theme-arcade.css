@@ -1,0 +1,81 @@
+/* Arcade CRT theme (js/themes.js), unlocked by tapping 100,000 times: pixel fonts, scanlines, chunky pixel chart, 8-bit coins */
+html.theme-arcade {
+  --ink: #0b0820; --panel: #15103a; --rule: #2a2160; --text: #f4f1ff; --muted: #8b82c9; --axis: #8b82c9;
+  --line: #43f2ff; --core: #e8ffff; --up: #5cff7f; --down: #ff4f8b; --ma-fast: #ffd23f; --ma-slow: #b56cff;
+  --font-display: "Press Start 2P", monospace;
+  --font-data: "VT323", monospace;
+}
+html.theme-arcade body { background: #05030f; }
+html.theme-arcade .app { font-family: var(--font-data); font-size: 18px; }
+html.theme-arcade .chart-wrap, :root.theme-arcade[data-season] .chart-wrap { background: radial-gradient(120% 90% at 50% 45%, #171042, #0b0820 70%); }
+html.theme-arcade .chart-wrap canvas#chart, html.theme-arcade .chart-wrap canvas#fx { image-rendering: pixelated; }
+/* Scanlines + CRT vignette over everything */
+html.theme-arcade .app::before { content: ""; position: fixed; inset: 0; z-index: 50; pointer-events: none;
+  background: repeating-linear-gradient(to bottom, #0000 0 2px, #00000059 2px 3px),
+              radial-gradient(130% 110% at 50% 50%, #0000 60%, #000000b0 100%); }
+html.theme-arcade .app::after { box-shadow: inset 0 0 0 3px #2a2160, inset 0 0 60px #43f2ff22 !important; }
+:root.theme-arcade[class] .rivals, :root.theme-arcade[data-season] .rivals { border-bottom: 2px solid var(--rule); mask-image: none; -webkit-mask-image: none; background: #0f0a2c; }
+html.theme-arcade .rv { font-family: var(--font-data); font-size: 17px; }
+html.theme-arcade .rv-you { border-radius: 0; box-shadow: inset 0 0 0 2px var(--up); }
+html.theme-arcade .symbol { font-size: 15px; color: var(--ma-fast); text-shadow: 2px 2px 0 #b5276a; }
+html.theme-arcade .price { font-family: var(--font-display); font-weight: 400; font-size: clamp(30px, 9vw, 56px); letter-spacing: 0; line-height: 1.15;
+  color: #fff; text-shadow: 3px 3px 0 #b5276a, 0 0 14px #43f2ff88; }
+html.theme-arcade .price.tick-up { color: var(--up); text-shadow: 3px 3px 0 #1d7a3a, 0 0 18px var(--up); }
+html.theme-arcade .price.tick-down { color: var(--down); text-shadow: 3px 3px 0 #6a1238, 0 0 18px var(--down); }
+html.theme-arcade .cap-label, html.theme-arcade .stats dt { font-family: var(--font-display); font-size: 8px; letter-spacing: .05em; color: var(--muted); }
+html.theme-arcade .stats dd, html.theme-arcade .share-price, html.theme-arcade .change { font-family: var(--font-data); font-weight: 400; font-size: 21px; }
+html.theme-arcade .chart-hint { font-family: var(--font-display); font-size: 11px; color: var(--ma-fast); animation: blink 0.9s steps(2, start) infinite; }
+html.theme-arcade .mode-toggle { border-radius: 0; border: 2px solid var(--rule); background: #0b0820; }
+html.theme-arcade .mode-toggle button { font-family: var(--font-display); font-size: 8px; border-radius: 0; }
+html.theme-arcade .mode-toggle button[aria-pressed="true"] { background: var(--line); color: #0b0820; }
+html.theme-arcade .sound-btn { border-radius: 0; }
+html.theme-arcade .hype-btn { border-radius: 0; border: 0; background: #15103a;
+  box-shadow: 0 -3px 0 0 #43f2ff, 0 3px 0 0 #1b7f8a, -3px 0 0 0 #43f2ff, 3px 0 0 0 #1b7f8a; color: var(--line); margin: 3px; }
+html.theme-arcade .hype-name { font-family: var(--font-display); font-size: 9px; }
+html.theme-arcade .hype-sub { font-family: var(--font-data); font-size: 16px; }
+html.theme-arcade .sell-btn { border-radius: 0; border: 0; background: #3a0f26;
+  box-shadow: 0 -4px 0 0 #ff4f8b, 0 4px 0 0 #8a1d48, -4px 0 0 0 #ff4f8b, 4px 0 0 0 #8a1d48; margin: 4px; }
+html.theme-arcade .sell-word { font-family: var(--font-display); font-size: 14px; font-weight: 400; }
+html.theme-arcade .sell-sub { font-family: var(--font-data); font-size: 16px; }
+html.theme-arcade .desk-btn { border-radius: 0; font-family: var(--font-display); font-weight: 400; font-size: 11px; background: var(--ma-fast); color: #0b0820;
+  box-shadow: 0 4px 0 0 #a9831a; margin: 4px; }
+html.theme-arcade .news { border-radius: 0; border: 3px solid var(--tone); background: #0b0820e6; box-shadow: 6px 6px 0 #00000088; }
+html.theme-arcade .news-tag { border-radius: 0; font-family: var(--font-display); font-size: 8px; }
+html.theme-arcade .news-text { font-family: var(--font-display); font-weight: 400; font-size: clamp(11px, 3vw, 15px); line-height: 1.5; }
+html.theme-arcade .news-sub { font-family: var(--font-data); font-size: 16px; }
+html.theme-arcade .desk { border-radius: 0; background: #0b0820ee; border-top: 3px solid var(--line); }
+html.theme-arcade .item { border-radius: 0; border: 2px solid var(--rule); }
+html.theme-arcade .item-name { font-family: var(--font-display); font-size: 10px; }
+html.theme-arcade .item-desc { font-size: 16px; }
+html.theme-arcade .item-count { font-family: var(--font-display); font-size: 13px; font-weight: 400; }
+html.theme-arcade .desk-tabs button { font-family: var(--font-display); font-size: 9px; }
+.unlock[data-theme="arcade"] .unlock-card { background: #0b0820; color: #f4f1ff; border-radius: 0; border: 0; box-shadow: 0 0 0 4px #43f2ff, 0 0 0 8px #0b0820, 0 0 0 12px #ff4f8b, 0 0 60px #43f2ff55; font-family: "VT323", monospace; }
+.unlock[data-theme="arcade"] .unlock-eyebrow { font: 10px "Press Start 2P", monospace; color: #ffd23f; animation: blink .9s steps(2,start) infinite; }
+.unlock[data-theme="arcade"] .unlock-title { font: 18px/1.5 "Press Start 2P", monospace; color: #fff; text-shadow: 3px 3px 0 #b5276a, 0 0 14px #43f2ff; }
+.unlock[data-theme="arcade"] .unlock-swatch { border-radius: 0; background: #15103a; box-shadow: 0 0 0 3px #43f2ff; transform: none; image-rendering: pixelated; }
+.unlock[data-theme="arcade"] .unlock-name { font: 14px "Press Start 2P", monospace; color: #43f2ff; margin-top: 18px; }
+.unlock[data-theme="arcade"] .unlock-sub, .unlock[data-theme="arcade"] .unlock-next { font: 21px/1.1 "VT323", monospace; color: #b9b2ee; }
+.unlock[data-theme="arcade"] .unlock-btns button { font: 11px "Press Start 2P", monospace; border-radius: 0; padding: 12px 14px; background: #ffd23f; color: #0b0820; box-shadow: 0 4px 0 #a9831a; }
+.unlock[data-theme="arcade"] .unlock-btns .unlock-later { background: #2a2160; color: #f4f1ff; box-shadow: 0 4px 0 #15103a; }
+
+html.theme-arcade .toast { background: #0b0820; border: 3px solid #ffd23f; border-radius: 0; box-shadow: 6px 6px 0 #00000088; }
+html.theme-arcade .toast-tag { border-radius: 0; background: #ffd23f; color: #0b0820; font-family: var(--font-display); font-size: 7px; }
+html.theme-arcade .toast-name { font-family: var(--font-display); font-weight: 400; font-size: 11px; line-height: 1.5; }
+html.theme-arcade .toast-desc { font-size: 16px; }
+html.theme-arcade .ach { border-radius: 0; }
+html.theme-arcade .ach-name { font-family: var(--font-display); font-weight: 400; font-size: 9px; line-height: 1.5; }
+html.theme-arcade .ach-desc { font-size: 15px; }
+html.theme-arcade .theme-opt { border-radius: 0; font-family: var(--font-data); font-size: 15px; }
+html.theme-arcade .theme-sub { font-size: 13px; }
+/* Combo counter for fast tapping (js/looks.js) */
+.combo { display: none; }
+html.theme-arcade .combo:not([hidden]) {
+  display: flex; flex-direction: column; align-items: flex-end; position: absolute; z-index: 1; pointer-events: none;
+  right: calc(var(--plot-r, 0px) + 80px); top: calc(var(--plot-t, 18px) + 40px);
+  font: 10px/1.8 "Press Start 2P", monospace; color: #ffd23f; text-shadow: 2px 2px 0 #b5276a;
+}
+html.theme-arcade .combo b { font-size: 24px; font-weight: 400; color: #fff; text-shadow: 3px 3px 0 #b5276a, 0 0 12px #43f2ff; }
+html.theme-arcade .combo small { font-size: 8px; color: #8b82c9; text-shadow: none; }
+html.theme-arcade .combo.pop b { animation: combo-pop 0.18s steps(2, end); }
+@keyframes combo-pop { from { transform: scale(1.35); } }
+@media (prefers-reduced-motion: reduce) { html.theme-arcade .combo.pop b, html.theme-arcade .chart-hint, .unlock[data-theme="arcade"] .unlock-eyebrow { animation: none; } }

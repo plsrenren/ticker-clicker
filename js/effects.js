@@ -15,11 +15,14 @@ TC.effects = (() => {
   let C = {};
   const FRENZY = "#ffc83d"; // market frenzy gold
   // Canvas glow (shadowBlur) is the most expensive thing we draw; main.js turns it off on slow devices
-  const glow = () => (TC.sketch || (TC.perf && TC.perf.low) ? 0 : 1);  // no neon glow in Sketchbook
+  // Per look: no neon in Sketchbook or newsprint, a little chalk dust on the board, extra bloom on the CRT
+  const GLOW = { sketch: 0, tape: 0, chalk: 0.35, arcade: 1.1 };
+  const glow = () => (TC.perf && TC.perf.low ? 0 : TC.look in GLOW ? GLOW[TC.look] : 1);
+  const arcade = () => TC.look === "arcade";
 
   function resize() {
     const r = canvas.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const dpr = arcade() ? 0.6 : Math.min(window.devicePixelRatio || 1, 2.5); // CRT: low-res, CSS scales it up pixelated
     w = r.width; h = r.height;
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
@@ -62,6 +65,21 @@ TC.effects = (() => {
             TC.ink.star(g, x, y, sr, seed, 2);
             g.fillStyle = color; g.fill();
             g.strokeStyle = TC.ink.pen; g.lineWidth = 1.8; g.stroke();
+            g.restore();
+            return;
+          }
+          if (arcade()) {
+            // a square pixel shockwave
+            const px = 4, r = Math.round(max * ease / px) * px;
+            g.save();
+            g.globalAlpha = 1 - p;
+            g.fillStyle = color;
+            g.shadowColor = C.line; g.shadowBlur = 10 * glow();
+            for (let i = -r; i <= r; i += px * 2) {
+              g.fillRect(x + i, y - r, px, px); g.fillRect(x + i, y + r, px, px);
+              g.fillRect(x - r, y + i, px, px); g.fillRect(x + r, y + i, px, px);
+            }
+            if (p < 0.3) { g.fillStyle = C.core; g.fillRect(x - px, y - px, px * 2, px * 2); }
             g.restore();
             return;
           }
@@ -113,6 +131,19 @@ TC.effects = (() => {
               g.strokeStyle = color; g.lineWidth = 1.8; g.stroke();
             } else if (doodle === 2) { g.beginPath(); g.arc(0, 0, r * 0.55, 0, Math.PI * 2); g.fill(); g.stroke(); }
             else { g.font = TC.font(800, size, "display"); g.textAlign = "center"; g.textBaseline = "middle"; TC.ink.text(g, "$", 0, 0, color, size); }
+            g.restore();
+            return;
+          }
+          if (arcade()) {
+            // 8-bit coin: a gold disc that flips (squashes) as it flies
+            g.translate(Math.round(x), Math.round(y));
+            const r = glyph ? 6 + k * 3 : 3;
+            const sq = Math.max(0.2, Math.abs(Math.cos(spin * t * 1.5)));
+            g.scale(sq, 1);
+            g.fillStyle = "#ffd23f"; g.shadowColor = "#ffd23f"; g.shadowBlur = 6 * glow();
+            g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.fill();
+            g.shadowBlur = 0;
+            g.fillStyle = "#a9831a"; g.fillRect(-r * 0.25, -r * 0.6, r * 0.5, r * 1.2);
             g.restore();
             return;
           }
@@ -511,6 +542,7 @@ TC.effects = (() => {
     feed,
     shake,
     refreshColors() { C = { up: token("up"), line: token("line"), down: token("down"), core: token("core") }; },
+    resize() { if (canvas) resize(); },
     init(el) {
       canvas = el;
       ctx = canvas.getContext("2d");
