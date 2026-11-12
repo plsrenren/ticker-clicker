@@ -7,9 +7,12 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#030605">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=Gaegu:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=Gaegu:wght@400;700&family=Special+Elite&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&family=Press+Start+2P&family=VT323&family=Cabin+Sketch:wght@400;700&display=swap">
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/theme-sketch.css">
+<link rel="stylesheet" href="css/theme-tape.css">
+<link rel="stylesheet" href="css/theme-arcade.css">
+<link rel="stylesheet" href="css/theme-chalk.css">
 </head>
 <body>
 
@@ -34,6 +37,8 @@
   <section class="chart-wrap" id="chartWrap" aria-label="Price chart. Tap to buy.">
     <canvas id="chart"></canvas>
     <canvas id="fx"></canvas>
+    <div class="paper-tape" id="paperTape" aria-hidden="true"><div class="paper-tape-track" id="paperTapeTrack"></div></div>
+    <div class="combo" id="combo" hidden aria-hidden="true"><span>COMBO</span><b id="comboN">x0</b><small id="comboHi">HI x0</small></div>
     <div class="chart-hint" id="hint">Tap anywhere to buy</div>
     <button class="sound-btn" id="soundBtn" type="button" aria-pressed="true" aria-label="Mute sound">
       <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="cross" d="M16 9l6 6M22 9l-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -111,7 +116,7 @@
         <ul id="ownedUpgrades" class="list owned-list" hidden></ul>
       </section>
       <section class="pane" data-pane="trophies" hidden>
-        <div class="ach-head"><h2 class="desk-title">Themes</h2><span class="ach-count" id="themeCount">1/3</span></div>
+        <div class="ach-head"><h2 class="desk-title">Themes</h2><span class="ach-count" id="themeCount">1/6</span></div>
         <div class="theme-row" id="themeRow" role="group" aria-label="Themes"></div>
         <div class="ach-head"><h2 class="desk-title">Achievements</h2><span class="ach-count" id="achCount">0/20</span></div>
         <ul class="ach-grid" id="achGrid"></ul>
@@ -191,6 +196,7 @@
 <script src="js/achievements.js"></script>
 <script src="js/rivals.js"></script>
 <script src="js/themes.js"></script>
+<script src="js/looks.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/ipo.js"></script>
 <script src="js/main.js"></script>

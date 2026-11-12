@@ -13,6 +13,7 @@ window.TC = window.TC || {};
     TC.themes.init();
     TC.chart.init($("chart"));
     TC.effects.init($("fx"));
+    TC.looks.init();
     TC.ui.init();
     TC.ipo.init(goPublic);
     TC.news.init();
