@@ -41,14 +41,21 @@ TC.chart = (() => {
 
   function readColors() {
     const cs = getComputedStyle(document.documentElement);
-    for (const k of ["line", "core", "rule", "muted", "axis", "up", "down", "ink", "ma-fast", "ma-slow"]) {
+    for (const k of ["line", "core", "rule", "muted", "axis", "up", "down", "ink", "ma-fast", "ma-slow", "pen", "paper"]) {
       C[k] = cs.getPropertyValue("--" + k).trim();
     }
   }
 
+  const ARCADE_DPR = 0.6;
+  // How much neon glow each look gets (newsprint has none, chalk only a little dust)
+  const GLOW = { tape: 0, sketch: 0, chalk: 0.35, arcade: 1.1 };
+  const glowK = () => (TC.look in GLOW ? GLOW[TC.look] : 1);
+  const look = () => TC.look || "classic";
+
   function resize() {
     const r = canvas.getBoundingClientRect();
-    dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    // Arcade CRT draws at a low resolution and lets CSS scale it up with hard pixel edges
+    dpr = TC.look === "arcade" ? ARCADE_DPR : Math.min(window.devicePixelRatio || 1, 2.5);
     w = r.width; h = r.height;
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
@@ -142,7 +149,7 @@ TC.chart = (() => {
     const top = pad.t, bot = h - pad.b;
     ctx.strokeStyle = C.core + "88"; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
     ctx.beginPath(); ctx.moveTo(Math.round(x) + 0.5, top + 18); ctx.lineTo(Math.round(x) + 0.5, bot); ctx.stroke(); ctx.setLineDash([]);
-    ctx.font = '600 10px "IBM Plex Mono", monospace';
+    ctx.font = TC.font(600, 10);
     const tw = ctx.measureText(label).width + 10;
     const lx = Math.min(w - pad.r - tw, Math.max(pad.l, x - tw / 2));
     ctx.fillStyle = C.core;
@@ -168,6 +175,7 @@ TC.chart = (() => {
       const close = r.p[end];
       const color = close >= open ? C.up : C.down;
       const cx = pad.l + step * (start + end) / 2;
+      if (TC.sketch) { crayonCandle(cx, yOf(hi), yOf(lo), yOf(open), yOf(close), bodyW, color, start); open = close; continue; }
       ctx.strokeStyle = color; ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 8; ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.moveTo(cx, yOf(hi)); ctx.lineTo(cx, yOf(lo)); ctx.stroke();
       const yO = yOf(open), yC = yOf(close);
@@ -175,6 +183,148 @@ TC.chart = (() => {
       ctx.shadowBlur = 0;
       open = close;
     }
+  }
+
+  // ---- Sketchbook: crayon candles and an ink price line ----
+  function crayonCandle(cx, yHi, yLo, yO, yC, bodyW, color, seed) {
+    const top = Math.min(yO, yC), hgt = Math.max(2, Math.abs(yC - yO));
+    ctx.strokeStyle = TC.ink.pen; ctx.lineWidth = 1.6; ctx.lineCap = "round";
+    ctx.beginPath(); TC.ink.line(ctx, cx, yHi, cx, yLo, 0.6, seed); ctx.stroke();
+    const bw = Math.max(3, bodyW);
+    TC.ink.rect(ctx, cx - bw / 2, top, bw, hgt, 0.8, seed);
+    ctx.fillStyle = color; ctx.fill();
+    // waxy crayon strokes across the body
+    ctx.save(); ctx.clip();
+    TC.ink.hatch(ctx, cx - bw / 2, top, bw, hgt, 4, "#2b222433", 1.4, seed);
+    ctx.restore();
+    TC.ink.rect(ctx, cx - bw / 2, top, bw, hgt, 0.8, seed);
+    ctx.strokeStyle = TC.ink.pen; ctx.lineWidth = 1.6; ctx.stroke();
+  }
+  function drawInkLine() {
+    const n0 = sampleN - pts.length;
+    const pj = pts.map((p, i) => ({ x: p.x, y: p.y + TC.ink.jit(n0 + i, 5) * 0.8 }));
+    const path = () => { ctx.beginPath(); pj.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); };
+    // pencil hatching under the line instead of a soft glow
+    ctx.save();
+    path();
+    ctx.lineTo(pj[pj.length - 1].x, h - pad.b); ctx.lineTo(pj[0].x, h - pad.b); ctx.closePath();
+    ctx.clip();
+    TC.ink.hatch(ctx, pad.l - 20, pad.t - 20, plotW() + 40, h - pad.b - pad.t + 40, 10, C.line + "38", 1.3, 7);
+    ctx.restore();
+    const boost = Math.max(0, glowT) / 1.2;
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.strokeStyle = TC.ink.pen; ctx.lineWidth = 6.5 + boost * 2.5; path(); ctx.stroke();
+    ctx.strokeStyle = C.line; ctx.lineWidth = 3 + boost * 1.5; path(); ctx.stroke();
+    // a thin highlight dab along the top, like the white marks on the cards
+    ctx.strokeStyle = "#fffaf0aa"; ctx.lineWidth = 1;
+    ctx.beginPath(); pj.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y - 1) : ctx.moveTo(p.x, p.y - 1))); ctx.stroke();
+  }
+
+  // ---- Ticker Tape 1929: printer's ink on newsprint ----
+  function drawPressLine() {
+    const path = (dx = 0, dy = 0) => { ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p.x + dx, p.y + dy) : ctx.moveTo(p.x + dx, p.y + dy))); };
+    // a faint engraved shading under the line
+    ctx.save();
+    path(); ctx.lineTo(pts[pts.length - 1].x, h - pad.b); ctx.lineTo(pts[0].x, h - pad.b); ctx.closePath(); ctx.clip();
+    ctx.strokeStyle = C.line + "1c"; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let y = Math.floor(pad.t / 4) * 4; y < h - pad.b; y += 4) { ctx.moveTo(pad.l, y + 0.5); ctx.lineTo(w - pad.r, y + 0.5); }
+    ctx.stroke();
+    ctx.restore();
+    const boost = Math.max(0, glowT) / 1.2;
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.strokeStyle = C.line + "33"; ctx.lineWidth = 3.4 + boost * 2; path(0.8, 0.9); ctx.stroke(); // ink bleed
+    ctx.strokeStyle = C.line; ctx.lineWidth = 2 + boost * 1.5; path(); ctx.stroke();
+  }
+
+  // ---- Arcade CRT: a stepped line snapped to a pixel grid ----
+  function drawPixelLine() {
+    const px = 3;
+    const snap = (v) => Math.round(v / px) * px;
+    const path = () => {
+      ctx.beginPath();
+      let lx = snap(pts[0].x), ly = snap(pts[0].y);
+      ctx.moveTo(lx, ly);
+      for (let i = 1; i < pts.length; i++) {
+        const x = snap(pts[i].x), y = snap(pts[i].y);
+        ctx.lineTo(x, ly); ctx.lineTo(x, y);
+        lx = x; ly = y;
+      }
+    };
+    // chunky bars under the line, fading down like an old phosphor screen
+    const grad = ctx.createLinearGradient(0, pad.t, 0, h - pad.b);
+    grad.addColorStop(0, C.line + "30"); grad.addColorStop(1, C.line + "00");
+    ctx.fillStyle = grad;
+    const every = Math.max(1, Math.round(pts.length / 70));
+    for (let i = 0; i < pts.length; i += every) {
+      const x = snap(pts[i].x), y = snap(pts[i].y);
+      ctx.fillRect(x - px, y + px * 2, px * 2, h - pad.b - y);
+    }
+    const boost = Math.max(0, glowT) / 1.2;
+    ctx.lineJoin = "miter"; ctx.lineCap = "butt";
+    ctx.shadowColor = C.line; ctx.shadowBlur = 12 + boost * 18;
+    ctx.strokeStyle = C.line; ctx.lineWidth = px + (boost > 0.3 ? px : 0);
+    path(); ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = C.core; ctx.lineWidth = 1;
+    path(); ctx.stroke();
+  }
+
+  // ---- Chalkboard: a grainy chalk stroke ----
+  function drawChalkLine() {
+    const n0 = sampleN - pts.length;
+    const path = (o, salt) => {
+      ctx.beginPath();
+      pts.forEach((p, i) => {
+        const x = p.x, y = p.y + (o ? TC.ink.jit(n0 + i, salt) * o : 0);
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      });
+    };
+    const boost = Math.max(0, glowT) / 1.2;
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.shadowColor = C.line; ctx.shadowBlur = 10;
+    ctx.strokeStyle = C.line + "55"; ctx.lineWidth = 5 + boost * 3; path(0.8, 21); ctx.stroke();
+    ctx.shadowBlur = 0;
+    // broken dashes on top give the dry, skipping look of chalk on slate
+    ctx.strokeStyle = C.line + "dd"; ctx.lineWidth = 2.6 + boost;
+    ctx.setLineDash([7, 2, 3, 1.5, 11, 2.5]); ctx.lineDashOffset = -n0 * 3.1;
+    path(0.6, 22); ctx.stroke();
+    ctx.setLineDash([2, 3, 1, 4]); ctx.strokeStyle = C.core; ctx.lineWidth = 1.2;
+    path(1.1, 23); ctx.stroke();
+    ctx.setLineDash([]); ctx.lineDashOffset = 0;
+    // chalk dust under the line
+    ctx.fillStyle = C.line + "40";
+    for (let i = 0; i < pts.length; i += 2) {
+      const j = TC.ink.jit(n0 + i, 24), k = TC.ink.jit(n0 + i, 25);
+      if (j < 0.2) continue;
+      ctx.fillRect(pts[i].x + k * 3, pts[i].y + 3 + j * 6, 1.4, 1.4);
+    }
+  }
+  // Eraser smudges: the oldest part of the chart is rubbed away as it scrolls off to the left.
+  // The swipes are tied to sample numbers so they travel with the chart.
+  function drawSmudge() {
+    const l = pad.l, r = w - pad.r, top = pad.t - 6, bot = h - pad.b;
+    const fadeW = (r - l) * 0.3;
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-out";
+    const g = ctx.createLinearGradient(l, 0, l + fadeW, 0);
+    g.addColorStop(0, "#000000f0"); g.addColorStop(0.35, "#000000a0"); g.addColorStop(1, "#00000000");
+    ctx.fillStyle = g;
+    ctx.fillRect(l - 2, top, fadeW + 2, bot - top);
+    // eraser swipes: soft wide arcs that knock out more of the line
+    ctx.lineCap = "round";
+    const shift = sinceSample / cfg.sampleMs;
+    const every = 34;
+    for (let k = Math.floor((sampleN - span) / every) - 1; k <= Math.floor(sampleN / every); k++) {
+      const x = xOf(history.length - 1 - (sampleN - k * every), shift);
+      if (x < l - 40 || x > l + fadeW * 1.2) continue;
+      const fade = 1 - Math.max(0, (x - l) / (fadeW * 1.2));
+      ctx.strokeStyle = "rgba(0,0,0," + (0.55 * fade).toFixed(3) + ")";
+      ctx.lineWidth = 26;
+      const y = top + (bot - top) * (0.3 + 0.4 * ((k * 0.618) % 1));
+      ctx.beginPath(); ctx.moveTo(x - 30, y + 18); ctx.quadraticCurveTo(x, y - 22, x + 34, y + 10); ctx.stroke();
+    }
+    ctx.restore();
   }
 
   function strokeLine() {
@@ -204,6 +354,7 @@ TC.chart = (() => {
       const color = up ? C.up : C.down;
       const cx = (xOf(start, end === n - 1 ? 0 : shift) + xOf(end, end === n - 1 ? 0 : shift)) / 2;
       const yO = yOf(open), yC = yOf(close);
+      if (TC.sketch) { crayonCandle(cx, yOf(hi), yOf(lo), yO, yC, bodyW, color, end); open = close; continue; }
       ctx.strokeStyle = color;
       ctx.fillStyle = color;
       ctx.shadowColor = color;
@@ -302,7 +453,7 @@ TC.chart = (() => {
     if (y < pad.t || y > h - pad.b) return;
     ctx.strokeStyle = color + "59"; ctx.lineWidth = 1; ctx.setLineDash([6, 5]);
     ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke(); ctx.setLineDash([]);
-    ctx.font = '500 9px "IBM Plex Mono", monospace'; ctx.fillStyle = color + "b3";
+    ctx.font = TC.font(500, 9); ctx.fillStyle = color + "b3";
     ctx.textAlign = "left"; ctx.textBaseline = text === "S" ? "top" : "bottom";
     ctx.fillText(text + " " + TC.format.axis(TC.market.px(lv.v)), pad.l + 4, text === "S" ? y + 3 : y - 3);
   }
@@ -324,7 +475,7 @@ TC.chart = (() => {
   function drawTags(shift, dt) {
     const life = IND.tagLife;
     tags = tags.filter((t) => t.t < life);
-    ctx.font = '700 10px "IBM Plex Mono", monospace';
+    ctx.font = TC.font(700, 10);
     const placed = [];
     for (const t of tags) {
       t.t += dt;
@@ -337,6 +488,14 @@ TC.chart = (() => {
       while (placed.some((q) => lx < q.x + q.w && q.x < lx + tw && Math.abs(q.y - y) < 20)) y -= 21;
       placed.push({ x: lx, y, w: tw });
       ctx.globalAlpha = Math.max(0, a);
+      if (TC.sketch) {
+        TC.ink.note(ctx, lx, y - 10, tw, 20, { rot: (t.n % 3 - 1) * 0.04, tape: false, salt: t.n });
+        ctx.fillStyle = t.color; ctx.fillRect(lx + 4, y + 6, tw - 8, 2);
+        ctx.fillStyle = TC.ink.pen; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(t.text, lx + tw / 2, y);
+        ctx.globalAlpha = 1;
+        continue;
+      }
       ctx.fillStyle = C.ink + "d9"; ctx.strokeStyle = t.color; ctx.lineWidth = 1;
       ctx.shadowColor = t.color; ctx.shadowBlur = 10;
       ctx.beginPath();
@@ -350,6 +509,8 @@ TC.chart = (() => {
   let lastDraw = 0;
 
   const api = {
+    refreshColors() { readColors(); },
+    resize() { if (canvas) resize(); },
     init(el) {
       const saved = TC.state && TC.state.data.settings.zoom;
       if (saved) span = clampSpan(saved);
@@ -357,6 +518,9 @@ TC.chart = (() => {
       if (sy) yScale = Math.max(0.15, Math.min(6, sy));
       canvas = el;
       ctx = canvas.getContext("2d");
+      // Every shadowBlur below is scaled by the look's glow, so the classic code paths work for all looks
+      const blur = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, "shadowBlur");
+      Object.defineProperty(ctx, "shadowBlur", { get() { return blur.get.call(this); }, set(v) { blur.set.call(this, v * glowK()); } });
       readColors();
       resize();
       window.addEventListener("resize", resize);
@@ -510,14 +674,28 @@ TC.chart = (() => {
 
       // Grid + y labels
       const step = niceStep(yMax - yMin, 5);
-      ctx.font = '500 10px "IBM Plex Mono", monospace';
+      ctx.font = TC.font(500, 10);
       ctx.textBaseline = "middle";
       ctx.textAlign = "left";
       for (let v = Math.ceil(yMin / step) * step; v <= yMax; v += step) {
         const y = Math.round(yOf(v)) + 0.5;
         ctx.strokeStyle = C.rule;
         ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+        if (look() === "tape" || look() === "arcade") {
+          // newsprint: dotted rules; arcade: dashed pixel rows
+          ctx.setLineDash(look() === "tape" ? [1, 3] : [6, 6]);
+          ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke(); ctx.setLineDash([]);
+        } else if (look() === "chalk") {
+          ctx.lineWidth = 1.2;
+          ctx.beginPath(); TC.ink.line(ctx, pad.l, y, w - pad.r, y, 0.5, Math.round(v / step) + 40); ctx.stroke();
+        } else if (TC.sketch) {
+          // pencil grid: dashed and a little wavy
+          ctx.lineWidth = 1.3; ctx.setLineDash([8, 6]);
+          ctx.beginPath(); TC.ink.line(ctx, pad.l, y, w - pad.r, y, 0.9, Math.round(v / step)); ctx.stroke();
+          ctx.setLineDash([]);
+        } else {
+          ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+        }
         ctx.fillStyle = C.axis;
         ctx.fillText(TC.format.axis(TC.market.px(v)), w - pad.r + 8, y);
       }
@@ -529,10 +707,12 @@ TC.chart = (() => {
         ctx.fillText("AUTO ↺", w - pad.r + 8, h - pad.b - 10);
       }
 
-      // Time labels
+      // Time labels (Ticker Tape: the paper tape runs where they'd be)
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
-      if (all) {
+      const noTime = look() === "tape";
+      const timeY = h - pad.b + (look() === "chalk" ? 11 : 8); // chalk: below the chalk tray
+      if (all && !noTime) {
         // ALL: four labels from the start of the run to now
         const r = runRec();
         const total = (r.p.length - 1) * r.every + r.t;
@@ -541,7 +721,7 @@ TC.chart = (() => {
           const x = pad.l + plotW() * (k / 3);
           ctx.fillStyle = C.muted;
           ctx.textAlign = k === 0 ? "left" : k === 3 ? "right" : "center";
-          ctx.fillText(k === 3 ? "now" : k === 0 && r.fromIpo ? "IPO" : long(total * (1 - k / 3)), x, h - pad.b + 8);
+          ctx.fillText(k === 3 ? "now" : k === 0 && r.fromIpo ? "IPO" : long(total * (1 - k / 3)), x, timeY);
         }
         ctx.textAlign = "center";
       }
@@ -549,10 +729,10 @@ TC.chart = (() => {
       // About 4 labels whatever the zoom
       const every = [2, 5, 10, 15, 30, 60, 90, 120].find((e) => secs / e <= 4.5) || 120;
       const fmt = (s) => s === 0 ? "now" : s < 60 ? `-${s}s` : s % 60 ? `-${Math.floor(s / 60)}m${s % 60}s` : `-${s / 60}m`;
-      for (let s = 0; !all && s <= secs + 0.01; s += every) {
+      for (let s = 0; !all && !noTime && s <= secs + 0.01; s += every) {
         const x = pad.l + plotW() * (1 - s / secs);
         ctx.fillStyle = C.muted;
-        ctx.fillText(fmt(s), x, h - pad.b + 8);
+        ctx.fillText(fmt(s), x, timeY);
       }
 
       ctx.save();
@@ -566,7 +746,7 @@ TC.chart = (() => {
         const y = Math.round(yOf(best)) + 0.5;
         ctx.strokeStyle = C.up + "66"; ctx.lineWidth = 1; ctx.setLineDash([2, 4]);
         ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke(); ctx.setLineDash([]);
-        ctx.font = '500 10px "IBM Plex Mono", monospace'; ctx.fillStyle = C.up; ctx.textAlign = "left"; ctx.textBaseline = "bottom";
+        ctx.font = TC.font(500, 10); ctx.fillStyle = C.up; ctx.textAlign = "left"; ctx.textBaseline = "bottom";
         ctx.fillText("ATH " + TC.format.axis(TC.market.px(best)), pad.l + 4, y - 3);
       }
 
@@ -592,6 +772,11 @@ TC.chart = (() => {
         all ? drawCandlesAll() : drawCandles();
         if (!all) drawTags(shiftNow, fdt);
         ctx.restore();
+      } else if (TC.sketch || look() === "tape" || look() === "arcade" || look() === "chalk") {
+        ({ sketch: drawInkLine, tape: drawPressLine, arcade: drawPixelLine, chalk: drawChalkLine })[look()]();
+        if (!all) drawTags(shiftNow, fdt);
+        ctx.restore();
+        if (look() === "chalk") drawSmudge();
       } else {
       // Soft area under the line
       const grad = ctx.createLinearGradient(0, pad.t, 0, h - pad.b);
@@ -628,23 +813,52 @@ TC.chart = (() => {
       ctx.setLineDash([3, 4]);
       ctx.beginPath(); ctx.moveTo(pad.l, t.y); ctx.lineTo(w - pad.r, t.y); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = C.core;
-      ctx.shadowColor = C.line;
-      ctx.shadowBlur = 12;
-      ctx.beginPath(); ctx.arc(t.x, t.y, 3.5, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0;
+      if (look() === "arcade") {
+        const px = 4, blink = Math.floor(now / 260) % 2;
+        ctx.fillStyle = blink ? C.core : C.line;
+        ctx.fillRect(Math.round(t.x / px) * px - px, Math.round(t.y / px) * px - px, px * 2, px * 2);
+      } else if (look() === "tape") {
+        ctx.fillStyle = C.line;
+        ctx.beginPath(); ctx.arc(t.x, t.y, 3.5, 0, Math.PI * 2); ctx.fill();
+      } else if (TC.sketch) {
+        ctx.fillStyle = C.line; ctx.strokeStyle = TC.ink.pen; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(t.x, t.y, 4.5 + TC.ink.jit(1, 9) * 0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      } else {
+        ctx.fillStyle = C.core;
+        ctx.shadowColor = C.line;
+        ctx.shadowBlur = 12;
+        ctx.beginPath(); ctx.arc(t.x, t.y, 3.5, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+      }
 
       // Price tag pill: green, flashes red on a sell
       const label = TC.format.axis(TC.market.px(history[n - 1]));
-      ctx.font = '600 11px "IBM Plex Mono", monospace';
+      ctx.font = TC.font(600, 11);
       const lw = ctx.measureText(label).width + 14;
       const ly = Math.max(pad.t, Math.min(h - pad.b, t.y));
       const tagColor = tagFlash.t > 0 && tagFlash.kind === "down" ? C.down : C.up;
-      ctx.fillStyle = tagColor;
-      if (tagFlash.t > 0) { ctx.shadowColor = tagColor; ctx.shadowBlur = 14; }
+      if (TC.sketch) {
+        // a taped-on paper note; it turns red when you sell
+        const x0 = w - pad.r + 3;
+        TC.ink.note(ctx, x0, ly - 12, lw + 2, 24, { fill: tagFlash.t > 0 && tagFlash.kind === "down" ? C.down : TC.ink.paper, rot: -0.05, salt: 3 });
+        ctx.fillStyle = TC.ink.pen; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+        ctx.fillText(label, x0 + 8, ly + 1);
+        return;
+      }
       const x0 = w - pad.r + 2;
+      if (look() === "chalk") {
+        // a chalk box around the price: board-coloured inside, chalk outline
+        ctx.fillStyle = C.ink + "e6"; ctx.strokeStyle = tagColor; ctx.lineWidth = 2;
+        TC.ink.rect(ctx, x0, ly - 12, lw, 24, 0.9, 11); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = tagColor; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+        ctx.fillText(label, x0 + 7, ly + 1);
+        return;
+      }
+      ctx.fillStyle = look() === "tape" ? (tagFlash.t > 0 && tagFlash.kind === "down" ? C.down : C.line) : tagColor;
+      if (tagFlash.t > 0) { ctx.shadowColor = tagColor; ctx.shadowBlur = 14; }
+      const sq = look() === "tape" || look() === "arcade";
       ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(x0, ly - 11, lw, 22, 5); else ctx.rect(x0, ly - 11, lw, 22);
+      if (ctx.roundRect && !sq) ctx.roundRect(x0, ly - 11, lw, 22, 5); else ctx.rect(x0, ly - 11, lw, 22);
       ctx.fill();
       ctx.shadowBlur = 0;
       ctx.fillStyle = C.ink;

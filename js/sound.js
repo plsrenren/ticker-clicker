@@ -4,6 +4,9 @@
 //
 // Where sounds play:
 //   buy (your tap)      short blip; pitch climbs while you tap fast
+//                       (Sketchbook: pencil scratch, Ticker Tape: typewriter key, Arcade: chiptune blip, Chalkboard: chalk tap)
+//   desk open/close     Sketchbook: page flip, Ticker Tape: carriage return, Chalkboard: eraser swipe
+//   theme extras        Ticker Tape: bell on a sell; Arcade: coin pickups for buyer orders, power-up on a purchase
 //   buy (stacked dip)   quick rising blips
 //   order (buyers)      soft tick, throttled so lots of buyers don't get noisy
 //   sell (you)          low thud + coin drop; PEAK SELL adds a bright triple chime
@@ -83,8 +86,55 @@ TC.sound = (() => {
       tapStreak = now - lastTap < 220 ? Math.min(tapStreak + 1, 24) : 0;
       lastTap = now;
       const f = 520 * Math.pow(2, tapStreak / 24); // climbs up to an octave
+      if (TC.sketch) { sfx.pencil(tapStreak); return; }
+      if (TC.look === "tape") { sfx.typeKey(tapStreak); return; }
+      if (TC.look === "arcade") { sfx.chip(tapStreak); return; }
+      if (TC.look === "chalk") { sfx.chalk(tapStreak); return; }
       tone({ freq: f, to: f * 1.5, type: "triangle", dur: 0.07, vol: 0.32 });
     },
+    // Sketchbook: a quick pencil scratch, brighter as you tap faster
+    pencil(streak = 0) {
+      const lift = 1 + streak / 30;
+      noise({ dur: 0.06 + Math.random() * 0.03, vol: 0.32, from: 2600 * lift, to: 5200 * lift, q: 2.2 });
+      noise({ dur: 0.04, vol: 0.12, from: 7000, to: 4000, q: 3, delay: 0.025 });
+    },
+    // Sketchbook: a page flip (desk opens and closes)
+    pageFlip(open) {
+      noise({ dur: 0.22, vol: 0.22, from: open ? 500 : 2600, to: open ? 2600 : 500, q: 0.8 });
+      noise({ dur: 0.06, vol: 0.18, from: 3000, to: 1200, q: 1.5, delay: 0.17 });
+    },
+    // Ticker Tape: a typewriter key (click + thunk); every so often the line-end bell
+    typeKey(streak = 0) {
+      noise({ dur: 0.025, vol: 0.4, from: 4200, to: 2500, q: 1.2 });
+      tone({ freq: 160 + Math.random() * 30, to: 90, type: "square", dur: 0.04, vol: 0.12 });
+      noise({ dur: 0.03, vol: 0.18, from: 1400, to: 700, q: 2, delay: 0.018 });
+      if (streak === 24 && Math.random() < 0.15) tone({ freq: 2093, type: "sine", dur: 0.5, vol: 0.18, delay: 0.05 });
+    },
+    carriage() {
+      noise({ dur: 0.35, vol: 0.18, from: 900, to: 2400, q: 3 });
+      tone({ freq: 2093, type: "sine", dur: 0.6, vol: 0.16, delay: 0.32 });
+    },
+    // Arcade: square-wave blip that climbs a pentatonic scale while you keep tapping
+    chip(streak = 0) {
+      const scale = [0, 2, 4, 7, 9];
+      const st = scale[streak % 5] + 12 * Math.floor(streak / 5);
+      const f = 392 * Math.pow(2, Math.min(st, 26) / 12);
+      tone({ freq: f, type: "square", dur: 0.05, vol: 0.13 });
+      tone({ freq: f * 2, type: "square", dur: 0.03, vol: 0.05, delay: 0.035 });
+    },
+    coin8() { tone({ freq: 988, type: "square", dur: 0.05, vol: 0.08 }); tone({ freq: 1319, type: "square", dur: 0.12, vol: 0.08, delay: 0.05 }); },
+    powerUp() { [262, 330, 392, 523, 659, 784, 1047].forEach((f, i) => tone({ freq: f, type: "square", dur: 0.06, vol: 0.1, delay: i * 0.045 })); },
+    // Chalkboard: a dry tap of chalk; now and then it squeaks
+    chalk(streak = 0) {
+      noise({ dur: 0.035 + Math.random() * 0.02, vol: 0.3, from: 1800 + streak * 40, to: 3200, q: 1.6 });
+      noise({ dur: 0.02, vol: 0.12, from: 600, to: 400, q: 1, type: "lowpass" });
+      if (Math.random() < 0.06) {
+        const f = 2400 + Math.random() * 900;
+        tone({ freq: f, to: f * 1.12, type: "sine", dur: 0.18, vol: 0.05, attack: 0.02 });
+        tone({ freq: f * 1.01, to: f * 0.95, type: "triangle", dur: 0.18, vol: 0.03, attack: 0.02 });
+      }
+    },
+    eraser(open) { noise({ dur: 0.3, vol: 0.2, from: open ? 300 : 900, to: open ? 900 : 300, q: 0.7, type: "lowpass" }); },
     stackTap(i) { tone({ freq: 400 + i * 60, to: 700 + i * 60, type: "square", dur: 0.05, vol: 0.12 }); },
     tick() {
       const now = performance.now();
@@ -145,8 +195,8 @@ TC.sound = (() => {
 
       const E = TC.events;
       E.on("buy", (e) => { if (e.stack) sfx.stackTap(stackI++ % 12); else sfx.tap(); });
-      E.on("order", () => sfx.tick());
-      E.on("sell", (e) => { if (e.manual) sfx.sell(e.bonus || 1); });
+      E.on("order", () => { if (TC.look === "arcade") { const n = performance.now(); if (n - lastTick > 160) { lastTick = n; sfx.coin8(); } } else sfx.tick(); });
+      E.on("sell", (e) => { if (!e.manual) return; sfx.sell(e.bonus || 1); if (TC.look === "tape") tone({ freq: 2093, type: "sine", dur: 0.7, vol: 0.2, delay: 0.1 }); });
       E.on("milestone", () => sfx.milestone());
       E.on("news", ({ tone: t, type }) => {
         if (type === "earnings") sfx.ticks();
@@ -155,11 +205,17 @@ TC.sound = (() => {
       });
       E.on("hype", ({ tone: t, title }) => { if (t === "down") sfx.buzz(); else if (title) sfx.whoosh(); });
       E.on("stackBuy", () => { stackI = 0; sfx.bassHit(); });
-      E.on("purchase", () => sfx.kaching());
+      E.on("purchase", () => (TC.look === "arcade" ? sfx.powerUp() : sfx.kaching()));
       E.on("split", () => { sfx.bell(); sfx.coins(); });
       E.on("chargeMax", () => { tone({ freq: 660, to: 1320, type: "triangle", dur: 0.16, vol: 0.28 }); tone({ freq: 1320, type: "sine", dur: 0.2, vol: 0.18, delay: 0.12 }); });
       E.on("chargeRelease", ({ max }) => { if (max) sfx.bassHit(); else tone({ freq: 220, to: 440, type: "triangle", dur: 0.12, vol: 0.25 }); });
       E.on("achievement", () => sfx.sparkle());
+      E.on("themeUnlock", () => sfx.sparkle());
+      E.on("desk", ({ open }) => {
+        if (TC.sketch) sfx.pageFlip(open);
+        else if (TC.look === "tape" && open) sfx.carriage();
+        else if (TC.look === "chalk") sfx.eraser(open);
+      });
       E.on("ipo", () => sfx.bell());
       E.on("private", () => sfx.bigChord());
       E.on("offline", () => sfx.coins());

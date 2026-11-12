@@ -41,8 +41,8 @@ TC.state = (() => {
       // ---- meta ----
       prestige: { points: 0, count: 0 },
       achievements: {},  // id -> unix ms unlocked
-      lifetime: { taps: 0, sells: 0, shortWins: 0, flashSurvived: 0, bestPrice: 0 },
-      settings: { chart: "line", sound: true },
+      lifetime: { taps: 0, sells: 0, shortWins: 0, flashSurvived: 0, crashHeld: 0, bestPrice: 0 },
+      settings: { chart: "line", sound: true, theme: "classic" },
       lastSeen: 0,       // unix ms of the last save, for offline earnings
     };
   }
