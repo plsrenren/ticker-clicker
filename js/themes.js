@@ -28,6 +28,7 @@ TC.themes = (() => {
       ? { data: HAND, display: HAND, scale: 1.25, weight: "700" }
       : Object.assign({}, CLASSIC_FONTS);
     st().settings.theme = t.id;
+    TC.sketch = t.cls.includes("theme-sketch"); // chart, effects and sound draw their Sketchbook versions
     if (TC.chart.refreshColors) TC.chart.refreshColors();
     if (TC.effects.refreshColors) TC.effects.refreshColors();
     renderPicker();

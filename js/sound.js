@@ -3,7 +3,8 @@
 // mutes and unmutes; the choice is saved in settings.sound.
 //
 // Where sounds play:
-//   buy (your tap)      short blip; pitch climbs while you tap fast
+//   buy (your tap)      short blip; pitch climbs while you tap fast (Sketchbook: pencil scratch)
+//   desk open/close     Sketchbook only: page flip
 //   buy (stacked dip)   quick rising blips
 //   order (buyers)      soft tick, throttled so lots of buyers don't get noisy
 //   sell (you)          low thud + coin drop; PEAK SELL adds a bright triple chime
@@ -83,7 +84,19 @@ TC.sound = (() => {
       tapStreak = now - lastTap < 220 ? Math.min(tapStreak + 1, 24) : 0;
       lastTap = now;
       const f = 520 * Math.pow(2, tapStreak / 24); // climbs up to an octave
+      if (TC.sketch) { sfx.pencil(tapStreak); return; }
       tone({ freq: f, to: f * 1.5, type: "triangle", dur: 0.07, vol: 0.32 });
+    },
+    // Sketchbook: a quick pencil scratch, brighter as you tap faster
+    pencil(streak = 0) {
+      const lift = 1 + streak / 30;
+      noise({ dur: 0.06 + Math.random() * 0.03, vol: 0.32, from: 2600 * lift, to: 5200 * lift, q: 2.2 });
+      noise({ dur: 0.04, vol: 0.12, from: 7000, to: 4000, q: 3, delay: 0.025 });
+    },
+    // Sketchbook: a page flip (desk opens and closes)
+    pageFlip(open) {
+      noise({ dur: 0.22, vol: 0.22, from: open ? 500 : 2600, to: open ? 2600 : 500, q: 0.8 });
+      noise({ dur: 0.06, vol: 0.18, from: 3000, to: 1200, q: 1.5, delay: 0.17 });
     },
     stackTap(i) { tone({ freq: 400 + i * 60, to: 700 + i * 60, type: "square", dur: 0.05, vol: 0.12 }); },
     tick() {
@@ -161,6 +174,7 @@ TC.sound = (() => {
       E.on("chargeRelease", ({ max }) => { if (max) sfx.bassHit(); else tone({ freq: 220, to: 440, type: "triangle", dur: 0.12, vol: 0.25 }); });
       E.on("achievement", () => sfx.sparkle());
       E.on("themeUnlock", () => sfx.sparkle());
+      E.on("desk", ({ open }) => { if (TC.sketch) sfx.pageFlip(open); });
       E.on("ipo", () => sfx.bell());
       E.on("private", () => sfx.bigChord());
       E.on("offline", () => sfx.coins());
