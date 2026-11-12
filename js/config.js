@@ -130,13 +130,13 @@ TC.config = {
     { id: "diamond", name: "Diamond Hands Club", desc: "Retail traders and finfluencers keep half their buying in bear markets.", cost: 8000, kind: "perk", short: "bear: retail keeps 50%" },
     { id: "meme",    name: "Meme Status",     desc: "The internet adopts you. Every market event swings 1.5x bigger, good and bad.", cost: 12000, kind: "perk", short: "events swing 1.5x" },
     { id: "div2",    name: "Analyst Upgrade", desc: "2x cash from every new high.",           cost: 20000,   kind: "yield",  value: 2 },
-    { id: "algo",    name: "Algo Execution",  desc: "Each buy adds 2% of buy volume.",        cost: 40000,   kind: "cpsPct", value: 0.02 },
+    { id: "algo",    name: "Algo Execution",  desc: "Every buyer buys 1.1x as much.",        cost: 40000,   kind: "gen",    value: 1.1 },
     { id: "algobb",  name: "Algo Buyback Desk", desc: "In a bear, auto-buys back a stake chunk whenever the discount passes 25% and you have the cash.", cost: 25000, kind: "perk", short: "auto bear buybacks" },
     { id: "squeeze", name: "Short Squeeze",   desc: "Every buyer buys 3x as much.",           cost: 150000,  kind: "gen",    value: 3 },
     { id: "divA",    name: "Dividend Aristocrat", desc: "Dividends pay out 1.5% more of the price each time.", cost: 300000, kind: "dividend", value: 0.015 },
     { id: "dark",    name: "Dark Pool Access", desc: "Hidden size. 5x per buy.",               cost: 500000,  kind: "mult",   value: 5 },
     { id: "div3",    name: "Buyback Program", desc: "2x cash from every new high.",           cost: 2000000, kind: "yield",  value: 2 },
-    { id: "hft",     name: "Co-located Servers", desc: "Each buy adds 5% more of buy volume.", cost: 5000000, kind: "cpsPct", value: 0.05 },
+    { id: "hft",     name: "Co-located Servers", desc: "Every buyer buys 1.2x as much.",   cost: 5000000, kind: "gen",    value: 1.2 },
   ],
 };
 
