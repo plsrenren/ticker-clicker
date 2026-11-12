@@ -55,7 +55,8 @@ TC.config = {
   // Going private (js/prestige.js): reset the run for permanent founder points.
   prestige: {
     minPrice: 1000000,   // best price this run needed to go private
-    scale: 100000,       // points for a run = floor(sqrt(bestPrice / scale))
+    scale: 100000,       // points for a run = floor(perDecade x log10(bestPrice / scale) x stake mult)...
+    perDecade: 3,        // ...so 3 points per 10x above $100K ($1M = 3, $1B = 12, $1T = 21 at a 5% stake)
     perPoint: 0.1,       // each founder point: +10% taps and buyers, forever
     stakeBase: 0.05,     // points x (your stake / 5%) when you go private
   },
