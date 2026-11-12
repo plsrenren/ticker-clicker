@@ -41,7 +41,7 @@ TC.chart = (() => {
 
   function readColors() {
     const cs = getComputedStyle(document.documentElement);
-    for (const k of ["line", "core", "rule", "muted", "axis", "up", "down", "ink", "ma-fast", "ma-slow"]) {
+    for (const k of ["line", "core", "rule", "muted", "axis", "up", "down", "ink", "ma-fast", "ma-slow", "pen", "paper"]) {
       C[k] = cs.getPropertyValue("--" + k).trim();
     }
   }
@@ -168,6 +168,7 @@ TC.chart = (() => {
       const close = r.p[end];
       const color = close >= open ? C.up : C.down;
       const cx = pad.l + step * (start + end) / 2;
+      if (TC.sketch) { crayonCandle(cx, yOf(hi), yOf(lo), yOf(open), yOf(close), bodyW, color, start); open = close; continue; }
       ctx.strokeStyle = color; ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 8; ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.moveTo(cx, yOf(hi)); ctx.lineTo(cx, yOf(lo)); ctx.stroke();
       const yO = yOf(open), yC = yOf(close);
@@ -175,6 +176,41 @@ TC.chart = (() => {
       ctx.shadowBlur = 0;
       open = close;
     }
+  }
+
+  // ---- Sketchbook: crayon candles and an ink price line ----
+  function crayonCandle(cx, yHi, yLo, yO, yC, bodyW, color, seed) {
+    const top = Math.min(yO, yC), hgt = Math.max(2, Math.abs(yC - yO));
+    ctx.strokeStyle = TC.ink.pen; ctx.lineWidth = 1.6; ctx.lineCap = "round";
+    ctx.beginPath(); TC.ink.line(ctx, cx, yHi, cx, yLo, 0.6, seed); ctx.stroke();
+    const bw = Math.max(3, bodyW);
+    TC.ink.rect(ctx, cx - bw / 2, top, bw, hgt, 0.8, seed);
+    ctx.fillStyle = color; ctx.fill();
+    // waxy crayon strokes across the body
+    ctx.save(); ctx.clip();
+    TC.ink.hatch(ctx, cx - bw / 2, top, bw, hgt, 4, "#2b222433", 1.4, seed);
+    ctx.restore();
+    TC.ink.rect(ctx, cx - bw / 2, top, bw, hgt, 0.8, seed);
+    ctx.strokeStyle = TC.ink.pen; ctx.lineWidth = 1.6; ctx.stroke();
+  }
+  function drawInkLine() {
+    const n0 = sampleN - pts.length;
+    const pj = pts.map((p, i) => ({ x: p.x, y: p.y + TC.ink.jit(n0 + i, 5) * 0.8 }));
+    const path = () => { ctx.beginPath(); pj.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); };
+    // pencil hatching under the line instead of a soft glow
+    ctx.save();
+    path();
+    ctx.lineTo(pj[pj.length - 1].x, h - pad.b); ctx.lineTo(pj[0].x, h - pad.b); ctx.closePath();
+    ctx.clip();
+    TC.ink.hatch(ctx, pad.l - 20, pad.t - 20, plotW() + 40, h - pad.b - pad.t + 40, 10, C.line + "38", 1.3, 7);
+    ctx.restore();
+    const boost = Math.max(0, glowT) / 1.2;
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.strokeStyle = TC.ink.pen; ctx.lineWidth = 6.5 + boost * 2.5; path(); ctx.stroke();
+    ctx.strokeStyle = C.line; ctx.lineWidth = 3 + boost * 1.5; path(); ctx.stroke();
+    // a thin highlight dab along the top, like the white marks on the cards
+    ctx.strokeStyle = "#fffaf0aa"; ctx.lineWidth = 1;
+    ctx.beginPath(); pj.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y - 1) : ctx.moveTo(p.x, p.y - 1))); ctx.stroke();
   }
 
   function strokeLine() {
@@ -204,6 +240,7 @@ TC.chart = (() => {
       const color = up ? C.up : C.down;
       const cx = (xOf(start, end === n - 1 ? 0 : shift) + xOf(end, end === n - 1 ? 0 : shift)) / 2;
       const yO = yOf(open), yC = yOf(close);
+      if (TC.sketch) { crayonCandle(cx, yOf(hi), yOf(lo), yO, yC, bodyW, color, end); open = close; continue; }
       ctx.strokeStyle = color;
       ctx.fillStyle = color;
       ctx.shadowColor = color;
@@ -337,6 +374,14 @@ TC.chart = (() => {
       while (placed.some((q) => lx < q.x + q.w && q.x < lx + tw && Math.abs(q.y - y) < 20)) y -= 21;
       placed.push({ x: lx, y, w: tw });
       ctx.globalAlpha = Math.max(0, a);
+      if (TC.sketch) {
+        TC.ink.note(ctx, lx, y - 10, tw, 20, { rot: (t.n % 3 - 1) * 0.04, tape: false, salt: t.n });
+        ctx.fillStyle = t.color; ctx.fillRect(lx + 4, y + 6, tw - 8, 2);
+        ctx.fillStyle = TC.ink.pen; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(t.text, lx + tw / 2, y);
+        ctx.globalAlpha = 1;
+        continue;
+      }
       ctx.fillStyle = C.ink + "d9"; ctx.strokeStyle = t.color; ctx.lineWidth = 1;
       ctx.shadowColor = t.color; ctx.shadowBlur = 10;
       ctx.beginPath();
@@ -518,7 +563,14 @@ TC.chart = (() => {
         const y = Math.round(yOf(v)) + 0.5;
         ctx.strokeStyle = C.rule;
         ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+        if (TC.sketch) {
+          // pencil grid: dashed and a little wavy
+          ctx.lineWidth = 1.3; ctx.setLineDash([8, 6]);
+          ctx.beginPath(); TC.ink.line(ctx, pad.l, y, w - pad.r, y, 0.9, Math.round(v / step)); ctx.stroke();
+          ctx.setLineDash([]);
+        } else {
+          ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(w - pad.r, y); ctx.stroke();
+        }
         ctx.fillStyle = C.axis;
         ctx.fillText(TC.format.axis(TC.market.px(v)), w - pad.r + 8, y);
       }
@@ -593,6 +645,10 @@ TC.chart = (() => {
         all ? drawCandlesAll() : drawCandles();
         if (!all) drawTags(shiftNow, fdt);
         ctx.restore();
+      } else if (TC.sketch) {
+        drawInkLine();
+        if (!all) drawTags(shiftNow, fdt);
+        ctx.restore();
       } else {
       // Soft area under the line
       const grad = ctx.createLinearGradient(0, pad.t, 0, h - pad.b);
@@ -629,11 +685,16 @@ TC.chart = (() => {
       ctx.setLineDash([3, 4]);
       ctx.beginPath(); ctx.moveTo(pad.l, t.y); ctx.lineTo(w - pad.r, t.y); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = C.core;
-      ctx.shadowColor = C.line;
-      ctx.shadowBlur = 12;
-      ctx.beginPath(); ctx.arc(t.x, t.y, 3.5, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0;
+      if (TC.sketch) {
+        ctx.fillStyle = C.line; ctx.strokeStyle = TC.ink.pen; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(t.x, t.y, 4.5 + TC.ink.jit(1, 9) * 0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      } else {
+        ctx.fillStyle = C.core;
+        ctx.shadowColor = C.line;
+        ctx.shadowBlur = 12;
+        ctx.beginPath(); ctx.arc(t.x, t.y, 3.5, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+      }
 
       // Price tag pill: green, flashes red on a sell
       const label = TC.format.axis(TC.market.px(history[n - 1]));
@@ -641,6 +702,14 @@ TC.chart = (() => {
       const lw = ctx.measureText(label).width + 14;
       const ly = Math.max(pad.t, Math.min(h - pad.b, t.y));
       const tagColor = tagFlash.t > 0 && tagFlash.kind === "down" ? C.down : C.up;
+      if (TC.sketch) {
+        // a taped-on paper note; it turns red when you sell
+        const x0 = w - pad.r + 3;
+        TC.ink.note(ctx, x0, ly - 12, lw + 2, 24, { fill: tagFlash.t > 0 && tagFlash.kind === "down" ? C.down : TC.ink.paper, rot: -0.05, salt: 3 });
+        ctx.fillStyle = TC.ink.pen; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+        ctx.fillText(label, x0 + 8, ly + 1);
+        return;
+      }
       ctx.fillStyle = tagColor;
       if (tagFlash.t > 0) { ctx.shadowColor = tagColor; ctx.shadowBlur = 14; }
       const x0 = w - pad.r + 2;

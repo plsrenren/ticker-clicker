@@ -230,7 +230,9 @@ TC.ui = (() => {
   function initRolls() { if (!rollCap) { rollCap = makeRoll($("price")); rollPx = makeRoll($("sharePrice")); rollCash = makeRoll($("cash")); } }
 
   function setDesk(open) {
+    const was = $("desk").classList.contains("open");
     $("desk").classList.toggle("open", open);
+    if (was !== open) TC.events.emit("desk", { open });
     $("scrim").hidden = !open;
     $("openDesk").setAttribute("aria-expanded", String(open));
   }

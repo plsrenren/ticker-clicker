@@ -162,3 +162,95 @@ html.theme-sketch .unlock-card { font-family: var(--font-display); }
   html.theme-sketch .hype-name { font-size: 14px; }
   html.theme-sketch .hype-sub { font-size: 11px; }
 }
+
+/* ===================== accents ===================== */
+/* paper grain on paper and gold surfaces */
+html.theme-sketch {
+  --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .17 0 0 0 0 .13 0 0 0 0 .14 0 0 0 .38 -.13'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+}
+html.theme-sketch .item,
+html.theme-sketch .private-card,
+html.theme-sketch .stake-card,
+html.theme-sketch .ipo-card,
+html.theme-sketch .news,
+html.theme-sketch .toast,
+html.theme-sketch .ach,
+html.theme-sketch .unlock-swatch { background: var(--grain), var(--paper) !important; }
+html.theme-sketch .stake-btn, html.theme-sketch .desk-btn, html.theme-sketch .hype-btn, html.theme-sketch .private-btn,
+html.theme-sketch .ipo-go, html.theme-sketch .unlock-wear { background: var(--grain), var(--line) !important; }
+html.theme-sketch .sell-btn:not(:disabled) { background: var(--grain), var(--down) !important; }
+html.theme-sketch .hype-btn:disabled, html.theme-sketch .hype-btn[data-state="locked"], html.theme-sketch .hype-btn[data-state="cool"],
+html.theme-sketch .sell-btn:disabled, html.theme-sketch .unlock-later { background: var(--grain), var(--paper) !important; }
+
+/* news: a taped-on note in marker; bad news has a torn bottom edge */
+html.theme-sketch .news {
+  rotate: -1.2deg;
+  border-image: var(--ske) 12 / 10px / 0 stretch !important;
+  padding-block: 12px 14px !important;
+  overflow: visible;
+}
+html.theme-sketch .news::after, html.theme-sketch .toast::after {
+  content: ""; position: absolute; top: -9px; left: 50%; width: 74px; height: 18px; margin-left: -37px;
+  background: #fffaf0a6; box-shadow: 0 1px 2px #0002; rotate: -4deg; pointer-events: none;
+}
+html.theme-sketch .news[data-tone="down"] {
+  rotate: 1deg;
+  clip-path: polygon(0 -20px, 100% -20px, 100% 92%, 96% 100%, 92% 93%, 87% 99%, 82% 92%, 77% 100%, 72% 94%, 66% 100%, 61% 93%, 55% 99%, 50% 92%, 44% 100%, 39% 94%, 33% 99%, 28% 92%, 22% 100%, 17% 93%, 11% 99%, 6% 92%, 0 99%);
+  padding-bottom: 20px !important;
+}
+html.theme-sketch .news-text { font-size: 21px; line-height: 1.1; }
+html.theme-sketch .news[data-tone="down"] .news-tag { background: var(--down); color: var(--pen); }
+html.theme-sketch .news[data-tone="up"] .news-tag { background: var(--up); color: var(--pen); }
+html.theme-sketch .news-tag { font-size: 14px; font-weight: 700; rotate: -3deg; box-shadow: 0 0 0 1.5px var(--pen); }
+html.theme-sketch .news-meter { box-shadow: 0 0 0 1.5px var(--pen); border-radius: 4px 5px 3px 6px; }
+
+/* achievement toast: a sticky note */
+html.theme-sketch .toast {
+  rotate: 1.5deg;
+  outline: 0;
+  border: .5px solid transparent;
+  border-image: var(--ske) 12 / 10px / 0 stretch;
+  box-shadow: 0 4px 0 #0000002e;
+  overflow: visible;
+}
+html.theme-sketch .toast-tag { font-size: 13px; font-weight: 700; rotate: -4deg; box-shadow: 0 0 0 1.5px var(--pen); }
+html.theme-sketch .toast-name { font-size: 20px; font-weight: 700; color: var(--pen); }
+
+/* seasons: weather doodles in the sky instead of a colour tint */
+html.theme-sketch[data-season] .chart-wrap { background: transparent; }
+html.theme-sketch[data-season] .app::after { box-shadow: none; animation: none; }
+html.theme-sketch .chart-wrap::before {
+  content: ""; position: absolute; pointer-events: none;
+  left: calc(var(--plot-l, 10px) + 4%); top: calc(var(--plot-t, 120px) + 6px);
+  width: 150px; height: 110px;
+  background: no-repeat center / contain;
+  animation: sk-boil-wob .66s steps(1) infinite;
+  opacity: 0; transition: opacity 1.2s ease;
+}
+@keyframes sk-boil-wob { 0% { transform: rotate(-.6deg); } 33% { transform: translate(1px, -1px) rotate(.4deg); } 66% { transform: translate(-1px, 0) rotate(0deg); } }
+@media (prefers-reduced-motion: reduce) { html.theme-sketch .chart-wrap::before, html.theme-sketch .chart-wrap::after { animation: none !important; } }
+html.theme-sketch[data-season="bull"] .chart-wrap::before {
+  opacity: 1;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 110'><g stroke='%232b2224' stroke-linecap='round' stroke-linejoin='round'><g stroke-width='5'><path d='M58 8v12M58 92v12M12 56h12M92 56h12M25 23l9 9M82 80l9 9M25 89l9-9M82 32l9-9'/></g><g stroke='%23f3cf6e' stroke-width='2.4'><path d='M58 8v12M58 92v12M12 56h12M92 56h12M25 23l9 9M82 80l9 9M25 89l9-9M82 32l9-9'/></g><path d='M58 32c14-1 25 10 24 24 0 13-11 24-25 23-13 0-23-11-23-24 1-13 11-24 24-23z' fill='%23f3cf6e' stroke-width='3'/><path d='M49 52v3M66 52v3M50 63c5 5 12 5 16 0' fill='none' stroke-width='2.4'/></g></svg>");
+}
+html.theme-sketch[data-season="bear"] .chart-wrap::before {
+  opacity: 1; width: 170px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 170 110'><path d='M30 66c-14 1-22-9-19-19 3-9 12-12 19-9 2-15 16-24 30-20 7-11 24-14 34-4 10-6 26-2 30 11 13-1 24 9 22 21-1 11-11 18-22 17z' fill='%237d8aa6' stroke='%232b2224' stroke-width='3' stroke-linejoin='round'/><path d='M58 50c4-3 8-3 12 0M96 46c4-3 8-3 12 0' fill='none' stroke='%232b2224' stroke-width='2.4' stroke-linecap='round'/><path d='M74 60c5-3 11-3 16 1' fill='none' stroke='%232b2224' stroke-width='2.4' stroke-linecap='round' transform='rotate(180 82 61)'/></svg>");
+}
+html.theme-sketch[data-season="bear"] .chart-wrap::after {
+  content: ""; position: absolute; pointer-events: none;
+  left: calc(var(--plot-l, 10px) + 4% + 22px); top: calc(var(--plot-t, 120px) + 76px);
+  width: 130px; height: 90px;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='130' height='45'><g stroke='%23a9c9d6' stroke-width='2.4' stroke-linecap='round'><path d='M12 4l-4 10M40 18l-4 10M68 6l-4 10M96 20l-4 10M120 8l-4 10M26 32l-3 8M82 34l-3 8'/></g></svg>") repeat-y 0 0 / 130px 45px;
+  -webkit-mask-image: linear-gradient(#000 40%, transparent); mask-image: linear-gradient(#000 40%, transparent);
+  animation: sk-rain .5s linear infinite;
+}
+@keyframes sk-rain { to { background-position: -6px 45px; } }
+html.theme-sketch[data-season="side"] .chart-wrap::before {
+  opacity: 1; width: 190px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 190 110'><g fill='%23e9eef0' stroke='%232b2224' stroke-width='3' stroke-linejoin='round'><path d='M22 52c-10 0-14-10-8-16 3-3 8-3 11-1 3-11 16-15 25-8 8-6 21-3 23 8 10 0 15 11 9 17z'/><path d='M104 86c-9 0-12-9-7-14 3-3 7-3 10-1 2-9 13-12 21-6 7-5 18-2 19 7 9 0 13 9 8 14z'/></g><path d='M60 40l6-3M64 46l7-1M132 74l6-3' stroke='%232b2224' stroke-width='2' stroke-linecap='round' fill='none'/></svg>");
+}
+html.theme-sketch[data-season="frenzy"] .chart-wrap::before {
+  opacity: 1; width: 170px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 170 110'><g fill='%23f3cf6e' stroke='%232b2224' stroke-width='2.6' stroke-linejoin='round'><path d='M40 14l7 17 18 2-14 11 5 18-16-10-15 10 4-18-14-11 18-2z'/><path d='M118 40l5 12 13 1-10 8 4 13-12-7-11 7 3-13-10-8 13-1z'/><path d='M80 76l3 8 9 1-7 5 2 9-7-5-8 5 2-9-7-5 9-1z'/></g></svg>");
+}

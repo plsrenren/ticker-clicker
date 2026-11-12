@@ -15,7 +15,7 @@ TC.effects = (() => {
   let C = {};
   const FRENZY = "#ffc83d"; // market frenzy gold
   // Canvas glow (shadowBlur) is the most expensive thing we draw; main.js turns it off on slow devices
-  const glow = () => (TC.perf && TC.perf.low ? 0 : 1);
+  const glow = () => (TC.sketch || (TC.perf && TC.perf.low) ? 0 : 1);  // no neon glow in Sketchbook
 
   function resize() {
     const r = canvas.getBoundingClientRect();
@@ -39,11 +39,32 @@ TC.effects = (() => {
       const life = 0.45 + k * 0.2;
       const max = 34 + k * 46;
       const color = heatColor(k);
+      const seed = Math.random() * Math.PI;
       return {
         update(dt) { t += dt; return t < life; },
         draw(g) {
           const p = t / life;
           const ease = 1 - Math.pow(1 - p, 3);
+          if (TC.sketch) {
+            // comic impact lines around the finger and a little ink star
+            g.save();
+            g.globalAlpha = Math.max(0, 1 - p * p);
+            g.lineCap = "round";
+            const nLines = 7, r0 = 10 + max * 0.35 * ease, r1 = r0 + 8 + k * 10;
+            for (let i = 0; i < nLines; i++) {
+              const a = (i / nLines) * Math.PI * 2 + seed;
+              g.strokeStyle = TC.ink.pen; g.lineWidth = 4;
+              g.beginPath(); g.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0); g.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1); g.stroke();
+              g.strokeStyle = color; g.lineWidth = 1.8;
+              g.beginPath(); g.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0); g.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1); g.stroke();
+            }
+            const sr = (7 + k * 5) * (p < 0.25 ? 0.6 + p * 1.6 : 1);
+            TC.ink.star(g, x, y, sr, seed, 2);
+            g.fillStyle = color; g.fill();
+            g.strokeStyle = TC.ink.pen; g.lineWidth = 1.8; g.stroke();
+            g.restore();
+            return;
+          }
           g.save();
           g.strokeStyle = color;
           g.shadowColor = C.line;
@@ -73,12 +94,28 @@ TC.effects = (() => {
       const size = glyph ? 11 + Math.random() * 6 + k * 4 : 2 + Math.random() * 2;
       const color = Math.random() < k * 0.6 ? C.core : C.line;
       const spin = (Math.random() - 0.5) * 8;
+      const doodle = Math.floor(Math.random() * 4); // Sketchbook: star, cross, dot or inked $
       return {
         update(dt) { t += dt; x += vx * dt; y += vy * dt; vy += 340 * dt; vx *= 0.985; return t < life; },
         draw(g) {
           const p = t / life;
           g.save();
           g.globalAlpha = 1 - p * p;
+          if (TC.sketch) {
+            g.translate(x, y);
+            g.rotate(spin * t);
+            const r = glyph ? size * 0.55 : 3 + size;
+            g.strokeStyle = TC.ink.pen; g.lineWidth = 1.6; g.fillStyle = color;
+            if (doodle === 0) { TC.ink.star(g, 0, 0, r, 0, 4); g.fill(); g.stroke(); }
+            else if (doodle === 1) {
+              g.lineCap = "round";
+              g.lineWidth = 4; g.beginPath(); g.moveTo(-r, 0); g.lineTo(r, 0); g.moveTo(0, -r); g.lineTo(0, r); g.stroke();
+              g.strokeStyle = color; g.lineWidth = 1.8; g.stroke();
+            } else if (doodle === 2) { g.beginPath(); g.arc(0, 0, r * 0.55, 0, Math.PI * 2); g.fill(); g.stroke(); }
+            else { g.font = TC.font(800, size, "display"); g.textAlign = "center"; g.textBaseline = "middle"; TC.ink.text(g, "$", 0, 0, color, size); }
+            g.restore();
+            return;
+          }
           g.fillStyle = color;
           g.shadowColor = color;
           g.shadowBlur = (8) * glow();
@@ -126,6 +163,15 @@ TC.effects = (() => {
           const fade = t > life ? 1 - (t - life) / 0.12 : 1;
           g.save();
           g.lineCap = "round";
+          if (TC.sketch) {
+            g.lineJoin = "round";
+            g.globalAlpha = fade;
+            const path = () => { g.beginPath(); trail.forEach((q, i) => (i ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y))); };
+            g.strokeStyle = TC.ink.pen; g.lineWidth = 5 + k * 2; path(); g.stroke();
+            g.strokeStyle = heatColor(k); g.lineWidth = 2.4 + k; path(); g.stroke();
+            g.restore();
+            return;
+          }
           g.shadowColor = C.line;
           g.shadowBlur = (12) * glow();
           for (let i = 1; i < trail.length; i++) {
@@ -211,6 +257,12 @@ TC.effects = (() => {
         },
         draw(g) {
           g.globalAlpha = Math.max(0, 1 - t / life);
+          if (TC.sketch) {
+            g.strokeStyle = TC.ink.pen; g.lineWidth = 1.4;
+            ps.forEach((p, i) => { TC.ink.star(g, p.x, p.y, 4 + (i % 3), i, i); g.fillStyle = p.c; g.fill(); g.stroke(); });
+            g.globalAlpha = 1;
+            return;
+          }
           g.shadowBlur = 10;
           for (const p of ps) {
             g.fillStyle = p.c; g.shadowColor = p.c;
@@ -269,7 +321,8 @@ TC.effects = (() => {
           g.shadowBlur = (16) * glow();
           g.font = TC.font(800, size, "display");
           g.textAlign = "center";
-          g.fillText(text, x, y - 40 * p);
+          if (TC.sketch) TC.ink.text(g, text, x, y - 40 * p, color, size * TC.fontSet.scale);
+          else g.fillText(text, x, y - 40 * p);
           g.shadowBlur = 0;
           g.globalAlpha = 1;
         },
@@ -373,7 +426,9 @@ TC.effects = (() => {
         g.shadowColor = color;
         g.shadowBlur = (i === 0 ? 18 + it.pop * 14 : 0) * glow();
         g.font = TC.font(800, size, "display");
-        g.fillText((it.sign > 0 ? "$" : "-$") + TC.format.money(it.amount).slice(1), b.r - 14, it.y);
+        const txt = (it.sign > 0 ? "$" : "-$") + TC.format.money(it.amount).slice(1);
+        if (TC.sketch) TC.ink.text(g, txt, b.r - 14, it.y, color, size * TC.fontSet.scale);
+        else g.fillText(txt, b.r - 14, it.y);
         y += size * 0.95;
       });
       g.shadowBlur = 0;
@@ -435,13 +490,17 @@ TC.effects = (() => {
     g.font = TC.font(700, 13);
     const lw = g.measureText(label).width + 16;
     const lx = b.r - lw - 8, ly = Math.max(b.t + 2, y - 24);
-    g.fillStyle = c.max ? C.core : C.line;
-    g.shadowBlur = (c.max ? 14 : 0) * glow();
-    g.beginPath();
-    if (g.roundRect) g.roundRect(lx, ly, lw, 20, 5); else g.rect(lx, ly, lw, 20);
-    g.fill();
-    g.shadowBlur = 0;
-    g.fillStyle = "#030605";
+    if (TC.sketch) {
+      TC.ink.note(g, lx, ly, lw, 22, { fill: c.max ? C.line : TC.ink.paper, rot: 0.03, salt: 11 });
+    } else {
+      g.fillStyle = c.max ? C.core : C.line;
+      g.shadowBlur = (c.max ? 14 : 0) * glow();
+      g.beginPath();
+      if (g.roundRect) g.roundRect(lx, ly, lw, 20, 5); else g.rect(lx, ly, lw, 20);
+      g.fill();
+      g.shadowBlur = 0;
+    }
+    g.fillStyle = TC.sketch ? TC.ink.pen : "#030605";
     g.textAlign = "left"; g.textBaseline = "middle";
     g.fillText(label, lx + 8, ly + 10);
     g.restore();
