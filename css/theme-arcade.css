@@ -79,3 +79,41 @@ html.theme-arcade .combo small { font-size: 8px; color: #8b82c9; text-shadow: no
 html.theme-arcade .combo.pop b { animation: combo-pop 0.18s steps(2, end); }
 @keyframes combo-pop { from { transform: scale(1.35); } }
 @media (prefers-reduced-motion: reduce) { html.theme-arcade .combo.pop b, html.theme-arcade .chart-hint, .unlock[data-theme="arcade"] .unlock-eyebrow { animation: none; } }
+
+/* ---------- Popups, dip button, desk cards, chips (everything outside the main screen) ---------- */
+html.theme-arcade .ipo.offline { background: #05030fd9; }
+html.theme-arcade .ipo-card { box-sizing: border-box; padding: 22px 18px; background: #0b0820; box-shadow: 0 0 0 4px #43f2ff, 0 0 0 8px #0b0820, 0 0 0 12px #ff4f8b, 0 0 50px #43f2ff44; }
+html.theme-arcade .ipo-eyebrow { font: 8px/1.6 "Press Start 2P", monospace; color: #ffd23f; text-transform: none; }
+html.theme-arcade .ipo-title { font: 18px/1.5 "Press Start 2P", monospace; color: #fff; text-shadow: 3px 3px 0 #b5276a; }
+html.theme-arcade .ipo-sub, html.theme-arcade .off-rows dt { font-size: 17px; }
+html.theme-arcade .ipo-field { border-radius: 0; border: 3px solid #2a2160; background: #15103a; }
+html.theme-arcade .ipo-field:focus-within { border-color: #43f2ff; }
+html.theme-arcade .ipo-dollar { font-family: "Press Start 2P", monospace; font-weight: 400; font-size: 30px; color: #5cff7f; }
+html.theme-arcade .ipo-input { font-family: "Press Start 2P", monospace; font-weight: 400; font-size: 26px; }
+html.theme-arcade .ipo-go { border-radius: 0; background: #ffd23f; color: #0b0820; font: 13px "Press Start 2P", monospace; box-shadow: 0 5px 0 #a9831a; }
+html.theme-arcade .ipo-go:disabled { background: #2a2160; color: #8b82c9; box-shadow: 0 5px 0 #15103a; }
+html.theme-arcade .off-rows div { border-radius: 0; border: 2px solid #2a2160; }
+html.theme-arcade .off-rows dd { font-family: "Press Start 2P", monospace; font-size: 13px; }
+html.theme-arcade .dip-btn { border-radius: 0; background: #5cff7f; color: #0b0820; margin: 4px;
+  box-shadow: 0 -4px 0 0 #d4ffe0, 0 4px 0 0 #1d7a3a, -4px 0 0 0 #d4ffe0, 4px 0 0 0 #1d7a3a, 0 0 26px #5cff7f; animation: dip-in 0.25s steps(3), arcade-dip 0.5s steps(1) 0.25s infinite; }
+html.theme-arcade .dip-word { font: 12px "Press Start 2P", monospace; }
+html.theme-arcade .dip-sub { font: 15px "VT323", monospace; }
+@keyframes arcade-dip { 50% { background: #d4ffe0; } }
+html.theme-arcade .private-card, html.theme-arcade .stake-card { border-radius: 0; border: 2px solid #2a2160; background: #0f0a2c; }
+html.theme-arcade .private-btn { border-radius: 0; border: 0; background: #2a2160; color: #43f2ff; font: 10px/1.6 "Press Start 2P", monospace; box-shadow: 0 4px 0 #15103a; }
+html.theme-arcade .private-btn:not(:disabled) { background: #43f2ff; color: #0b0820; box-shadow: 0 4px 0 #1b7f8a; }
+html.theme-arcade .stake-btn { border-radius: 0; font: 17px "VT323", monospace; }
+html.theme-arcade .private-bar { border-radius: 0; height: 8px; background: #2a2160; }
+html.theme-arcade .private-bar i { background: repeating-linear-gradient(90deg, #43f2ff 0 6px, transparent 6px 8px); }
+html.theme-arcade .qty { border-radius: 0; } html.theme-arcade .qty button { border-radius: 0; font: 8px "Press Start 2P", monospace; }
+html.theme-arcade .desk-tabs { border-radius: 0; border: 2px solid #2a2160; }
+html.theme-arcade .desk-tabs button { border-radius: 0; }
+html.theme-arcade .desk-tabs button[aria-selected="true"] { background: #43f2ff; color: #0b0820; }
+html.theme-arcade .badge, html.theme-arcade .tab-badge { border-radius: 0; background: #ff4f8b; color: #fff; font-family: "VT323", monospace; font-size: 15px; }
+html.theme-arcade .debuff-chip { border-radius: 0; font: 15px "VT323", monospace; box-shadow: 3px 3px 0 #00000088; }
+html.theme-arcade .rsi-chip { border-radius: 0; font: 15px "VT323", monospace; }
+html.theme-arcade .news-meter { border-radius: 0; height: 10px; }
+html.theme-arcade .news-red, html.theme-arcade .news-green { -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px); mask-image: repeating-linear-gradient(90deg, #000 0 6px, transparent 6px 8px); }
+html.theme-arcade .desk-handle span { border-radius: 0; background: #43f2ff; }
+html.theme-arcade .reset { border-radius: 0; font-family: "VT323", monospace; font-size: 17px; }
+@media (prefers-reduced-motion: reduce) { html.theme-arcade .dip-btn { animation: none; } }

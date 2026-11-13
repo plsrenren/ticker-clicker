@@ -69,3 +69,39 @@ html.theme-chalk .chart-wrap::after {
     linear-gradient(#8a6340, #6a4a2c 70%, #4e3520) 0 8px / 100% 9px no-repeat;
   filter: drop-shadow(0 3px 4px #0006);
 }
+
+/* ---------- Popups, dip button, desk cards, chips (everything outside the main screen) ---------- */
+html.theme-chalk .ipo { background: #26332dd9; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+html.theme-chalk .ipo.offline { background: #0008; }
+html.theme-chalk .ipo-card { box-sizing: border-box; padding: 22px 20px; background: #26332d; border-radius: 4px; box-shadow: 0 0 0 10px #7a5634, 0 0 0 12px #4e3520, 0 20px 50px #000a; }
+html.theme-chalk .ipo-eyebrow { color: var(--muted); font-family: var(--font-display); }
+html.theme-chalk .ipo-title { font-family: var(--font-display); font-weight: 700; color: #f5df8e; text-shadow: 0 0 8px #f5df8e44; }
+html.theme-chalk .ipo-field { background: transparent; border: 2px dashed #f3f1e6aa; border-radius: 18px 6px 16px 8px / 8px 16px 6px 18px; }
+html.theme-chalk .ipo-dollar { color: var(--up); font-family: var(--font-display); }
+html.theme-chalk .ipo-input { font-family: var(--font-display); }
+html.theme-chalk .ipo-go { background: #f3f1e6; color: #26332d; font-family: var(--font-display); font-weight: 700; border-radius: 26px 10px 22px 12px / 12px 22px 10px 26px; }
+html.theme-chalk .ipo-go:disabled { background: transparent; color: var(--muted); border: 2px dashed #f3f1e655; }
+html.theme-chalk .off-rows div { background: transparent; border: 1.5px dashed #f3f1e655; border-radius: 14px 6px 12px 8px; }
+html.theme-chalk .dip-btn { background: transparent; color: var(--up); border: 3px solid var(--up); border-radius: 30px 12px 26px 14px / 14px 26px 12px 30px;
+  box-shadow: none; text-shadow: 0 0 6px #a6e8b688; animation: dip-in 0.25s ease-out, chalk-sell-wobble 0.9s ease-in-out 0.25s infinite; background: #26332dcc; }
+html.theme-chalk .dip-word { font-family: var(--font-display); font-weight: 700; }
+html.theme-chalk .private-card, html.theme-chalk .stake-card { background: transparent; border: 1.5px dashed #f3f1e655; border-radius: 16px 6px 14px 8px; }
+html.theme-chalk .private-btn, html.theme-chalk .stake-btn { background: transparent; border: 2px solid #f3f1e6aa; color: var(--text); border-radius: 18px 6px 16px 8px / 8px 16px 6px 18px; font-family: var(--font-display); }
+html.theme-chalk .private-btn:not(:disabled) { border-color: #f5df8e; color: #f5df8e; }
+html.theme-chalk .private-bar { background: #f3f1e622; } html.theme-chalk .private-bar i { background: #f3f1e6; box-shadow: 0 0 4px #fff8; }
+html.theme-chalk .private-pts, html.theme-chalk .ach-count { color: #f5df8e; }
+html.theme-chalk .qty { border: 1.5px dashed #f3f1e655; border-radius: 12px 6px 10px 8px; }
+html.theme-chalk .qty button { font-family: var(--font-display); }
+html.theme-chalk .qty button[aria-pressed="true"] { background: #f3f1e6; color: #26332d; border-radius: 10px 4px 8px 6px; }
+html.theme-chalk .desk-tabs { background: #26332df0; border: 1.5px dashed #f3f1e655; border-radius: 14px 6px 12px 8px; backdrop-filter: none; }
+html.theme-chalk .desk-tabs button { font-family: var(--font-display); font-weight: 700; color: var(--muted); }
+html.theme-chalk .desk-tabs button[aria-selected="true"] { background: #f3f1e6; color: #26332d; border-radius: 12px 4px 10px 6px; }
+html.theme-chalk .badge, html.theme-chalk .tab-badge { background: #f5df8e; color: #26332d; border-radius: 10px 4px 8px 5px; }
+html.theme-chalk .debuff-chip { background: transparent; color: var(--down); border: 1.5px solid var(--down); box-shadow: none; border-radius: 10px 4px 8px 5px; }
+html.theme-chalk .rsi-chip { border-style: dashed; border-radius: 10px 4px 8px 5px; }
+html.theme-chalk .rsi-chip[data-level="hot"] { background: transparent; color: var(--down); }
+html.theme-chalk .news-meter { background: #f3f1e61a; border-radius: 6px 2px 5px 3px; }
+html.theme-chalk .news-red, html.theme-chalk .news-green { box-shadow: none; opacity: 0.85; }
+html.theme-chalk .desk-handle span { background: #f3f1e6aa; }
+html.theme-chalk .reset { border-radius: 14px 6px 12px 8px; font-family: var(--font-display); }
+@media (prefers-reduced-motion: reduce) { html.theme-chalk .dip-btn { animation: none; } }

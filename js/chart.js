@@ -47,6 +47,7 @@ TC.chart = (() => {
   }
 
   const ARCADE_DPR = 0.6;
+  const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   // How much neon glow each look gets (newsprint has none, chalk only a little dust)
   const GLOW = { tape: 0, sketch: 0, chalk: 0.35, arcade: 1.1 };
   const glowK = () => (TC.look in GLOW ? GLOW[TC.look] : 1);
@@ -814,7 +815,7 @@ TC.chart = (() => {
       ctx.beginPath(); ctx.moveTo(pad.l, t.y); ctx.lineTo(w - pad.r, t.y); ctx.stroke();
       ctx.setLineDash([]);
       if (look() === "arcade") {
-        const px = 4, blink = Math.floor(now / 260) % 2;
+        const px = 4, blink = REDUCED ? 1 : Math.floor(now / 260) % 2;
         ctx.fillStyle = blink ? C.core : C.line;
         ctx.fillRect(Math.round(t.x / px) * px - px, Math.round(t.y / px) * px - px, px * 2, px * 2);
       } else if (look() === "tape") {
