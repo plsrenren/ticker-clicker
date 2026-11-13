@@ -35,7 +35,7 @@ TC.themes = (() => {
     { id: "tape", name: "Ticker Tape", sub: "1929 newsprint", look: "tape", cls: ["theme-tape"], test: (s) => (s.lifetime.crashHeld || 0) >= 1,
       hint: () => "Hold through a crash, no sells",
       font: { data: TYPE, display: TYPE, scale: 1.05, weight: "400" }, load: ['16px "Special Elite"', '700 16px "Old Standard TT"'],
-      card: { eyebrow: "Held through the crash", name: "Ticker Tape 1929", sub: "Sepia newsprint, typewriter numbers and a paper tape under the chart.",
+      card: { eyebrow: "Held through the crash", name: "Ticker Tape 1929", sub: "Sepia newsprint, typewriter numbers and a paper ticker tape along the top.",
         next: "Unlocked by riding out a flash crash without selling. Switch any time in Trophies." } },
     { id: "arcade", name: "Arcade CRT", sub: "Insert coin", look: "arcade", cls: ["theme-arcade"], test: (s) => (s.lifetime.taps || 0) >= TAPS,
       hint: (s) => "Tap 100K · " + Math.min(99, Math.floor((s.lifetime.taps || 0) / TAPS * 100)) + "%",
