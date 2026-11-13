@@ -708,12 +708,11 @@ TC.chart = (() => {
         ctx.fillText("AUTO ↺", w - pad.r + 8, h - pad.b - 10);
       }
 
-      // Time labels (Ticker Tape: the paper tape runs where they'd be)
+      // Time labels
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
-      const noTime = look() === "tape";
       const timeY = h - pad.b + (look() === "chalk" ? 11 : 8); // chalk: below the chalk tray
-      if (all && !noTime) {
+      if (all) {
         // ALL: four labels from the start of the run to now
         const r = runRec();
         const total = (r.p.length - 1) * r.every + r.t;
@@ -730,7 +729,7 @@ TC.chart = (() => {
       // About 4 labels whatever the zoom
       const every = [2, 5, 10, 15, 30, 60, 90, 120].find((e) => secs / e <= 4.5) || 120;
       const fmt = (s) => s === 0 ? "now" : s < 60 ? `-${s}s` : s % 60 ? `-${Math.floor(s / 60)}m${s % 60}s` : `-${s / 60}m`;
-      for (let s = 0; !all && !noTime && s <= secs + 0.01; s += every) {
+      for (let s = 0; !all && s <= secs + 0.01; s += every) {
         const x = pad.l + plotW() * (1 - s / secs);
         ctx.fillStyle = C.muted;
         ctx.fillText(fmt(s), x, timeY);

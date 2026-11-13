@@ -119,8 +119,6 @@ TC.rivals = (() => {
 
   const api = {
     names: () => NAMES.slice(),
-    // Share prices of the made-up rivals (Ticker Tape prints these)
-    quotes: () => rivals.map((r) => ({ sym: r.sym, price: r.price })),
     // A random rival symbol, optionally avoiding some
     pick(avoid = []) { const pool = NAMES.filter((n) => !avoid.includes(n)); return pool[Math.floor(Math.random() * pool.length)]; },
     // A random made-up rival worth more than `cap` (at least 1.5x), or null if you've outgrown them all
