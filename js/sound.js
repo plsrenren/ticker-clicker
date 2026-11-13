@@ -7,6 +7,9 @@
 //                       (Sketchbook: pencil scratch, Ticker Tape: typewriter key, Arcade: chiptune blip, Chalkboard: chalk tap)
 //   desk open/close     Sketchbook: page flip, Ticker Tape: carriage return, Chalkboard: eraser swipe
 //   theme extras        Ticker Tape: bell on a sell; Arcade: coin pickups for buyer orders, power-up on a purchase
+//   theme voices        Arcade: every tone plays as a square wave (chiptune).
+//                       Ticker Tape: telegraph clicks for bad news, desk bells for milestones/achievements/going private.
+//                       Chalkboard: a school bell for bad news, chalk squeak + chime for achievements, a cheer of chalk taps for milestones.
 //   buy (stacked dip)   quick rising blips
 //   order (buyers)      soft tick, throttled so lots of buyers don't get noisy
 //   sell (you)          low thud + coin drop; PEAK SELL adds a bright triple chime
@@ -46,6 +49,8 @@ TC.sound = (() => {
   // One oscillator note with a quick attack and exponential decay.
   function tone({ freq, to = null, type = "sine", dur = 0.12, vol = 0.5, delay = 0, attack = 0.005 }) {
     if (!ctx || !on()) return;
+    // Arcade CRT: every soft voice becomes a square wave, so all the game's jingles turn chiptune
+    if (TC.look === "arcade" && (type === "sine" || type === "triangle")) { type = "square"; vol *= 0.45; }
     const t = ctx.currentTime + delay;
     const o = ctx.createOscillator(), g = ctx.createGain();
     o.type = type;
@@ -134,6 +139,12 @@ TC.sound = (() => {
         tone({ freq: f * 1.01, to: f * 0.95, type: "triangle", dur: 0.18, vol: 0.03, attack: 0.02 });
       }
     },
+    // Ticker Tape: a hotel desk bell, and telegraph clicks in morse-like bursts
+    deskBell(n = 1) { for (let i = 0; i < n; i++) { tone({ freq: 2093, type: "sine", dur: 0.9, vol: 0.22, delay: i * 0.22 }); tone({ freq: 4186, type: "sine", dur: 0.4, vol: 0.06, delay: i * 0.22 }); } },
+    telegraph() { [0, 0.09, 0.18, 0.42, 0.66, 0.75].forEach((d, i) => tone({ freq: 1050, type: "square", dur: i === 3 || i === 4 ? 0.16 : 0.05, vol: 0.1, delay: d })); },
+    // Chalkboard: an old electric school bell
+    schoolBell() { for (let i = 0; i < 14; i++) tone({ freq: 1250 + (i % 2) * 40, type: "triangle", dur: 0.05, vol: 0.12, delay: i * 0.045 }); },
+    squeak() { const f = 2600 + Math.random() * 600; tone({ freq: f, to: f * 1.15, type: "sine", dur: 0.22, vol: 0.06, attack: 0.03 }); },
     eraser(open) { noise({ dur: 0.3, vol: 0.2, from: open ? 300 : 900, to: open ? 900 : 300, q: 0.7, type: "lowpass" }); },
     stackTap(i) { tone({ freq: 400 + i * 60, to: 700 + i * 60, type: "square", dur: 0.05, vol: 0.12 }); },
     tick() {
@@ -197,10 +208,14 @@ TC.sound = (() => {
       E.on("buy", (e) => { if (e.stack) sfx.stackTap(stackI++ % 12); else sfx.tap(); });
       E.on("order", () => { if (TC.look === "arcade") { const n = performance.now(); if (n - lastTick > 160) { lastTick = n; sfx.coin8(); } } else sfx.tick(); });
       E.on("sell", (e) => { if (!e.manual) return; sfx.sell(e.bonus || 1); if (TC.look === "tape") tone({ freq: 2093, type: "sine", dur: 0.7, vol: 0.2, delay: 0.1 }); });
-      E.on("milestone", () => sfx.milestone());
+      E.on("milestone", () => {
+        if (TC.look === "tape") sfx.deskBell(1);
+        else if (TC.look === "chalk") { for (let i = 0; i < 4; i++) sfx.chalk(i * 6); sfx.milestone(); }
+        else sfx.milestone();
+      });
       E.on("news", ({ tone: t, type }) => {
         if (type === "earnings") sfx.ticks();
-        else if (t === "down") sfx.alarm();
+        else if (t === "down") (TC.look === "tape" ? sfx.telegraph() : TC.look === "chalk" ? sfx.schoolBell() : sfx.alarm());
         else if (t === "up") sfx.whoosh();
       });
       E.on("hype", ({ tone: t, title }) => { if (t === "down") sfx.buzz(); else if (title) sfx.whoosh(); });
@@ -209,7 +224,11 @@ TC.sound = (() => {
       E.on("split", () => { sfx.bell(); sfx.coins(); });
       E.on("chargeMax", () => { tone({ freq: 660, to: 1320, type: "triangle", dur: 0.16, vol: 0.28 }); tone({ freq: 1320, type: "sine", dur: 0.2, vol: 0.18, delay: 0.12 }); });
       E.on("chargeRelease", ({ max }) => { if (max) sfx.bassHit(); else tone({ freq: 220, to: 440, type: "triangle", dur: 0.12, vol: 0.25 }); });
-      E.on("achievement", () => sfx.sparkle());
+      E.on("achievement", () => {
+        if (TC.look === "tape") sfx.deskBell(2);
+        else if (TC.look === "chalk") { sfx.squeak(); sfx.sparkle(); }
+        else sfx.sparkle();
+      });
       E.on("themeUnlock", () => sfx.sparkle());
       E.on("desk", ({ open }) => {
         if (TC.sketch) sfx.pageFlip(open);
@@ -217,7 +236,7 @@ TC.sound = (() => {
         else if (TC.look === "chalk") sfx.eraser(open);
       });
       E.on("ipo", () => sfx.bell());
-      E.on("private", () => sfx.bigChord());
+      E.on("private", () => { sfx.bigChord(); if (TC.look === "tape") sfx.deskBell(3); });
       E.on("offline", () => sfx.coins());
       E.on("dividend", () => sfx.coins());
       E.on("buyback", () => sfx.kaching());

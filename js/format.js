@@ -30,5 +30,7 @@ TC.fontSet = {
 };
 TC.font = (weight, size, kind) => {
   const f = TC.fontSet;
-  return (f.weight || weight) + " " + Math.round(size * f.scale * 10) / 10 + "px " + (kind === "display" ? f.display : f.data);
+  // displayScale lets a wide display font (Arcade's pixel font) shrink while small data text grows
+  const k = kind === "display" && f.displayScale ? f.displayScale : f.scale;
+  return (f.weight || weight) + " " + Math.round(size * k * 10) / 10 + "px " + (kind === "display" ? f.display : f.data);
 };

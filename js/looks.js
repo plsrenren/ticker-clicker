@@ -18,8 +18,9 @@ TC.looks = (() => {
     if (e === 8) { whole++; e = 0; }
     return (whole || e ? (whole ? whole.toLocaleString("en-US") : "") + FRAC[e] : "0");
   }
-  const SPEED = 38; // px per second
-  let tape = null, track = null, offset = 0, last = {}, n = 0, raf = 0, prevT = 0;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const SPEED = reduced ? 0 : 38; // px per second; reduced motion keeps the tape still
+  let swapT = 0, tape = null, track = null, offset = 0, last = {}, n = 0, raf = 0, prevT = 0;
 
   function entry() {
     const s = st();
@@ -56,6 +57,8 @@ TC.looks = (() => {
     const width = tape.clientWidth;
     // keep the strip full: add quotes on the right, drop the ones that left on the left
     while (track.scrollWidth + offset < width + 80) track.appendChild(entry());
+    // reduced motion: no crawl, but swap the oldest quote for a fresh one every few seconds
+    if (reduced && t - swapT > 4000 && track.firstElementChild) { swapT = t; track.firstElementChild.remove(); track.appendChild(entry()); }
     const first = track.firstElementChild;
     if (first && offset + first.offsetWidth + 28 < 0) { offset += first.offsetWidth + 28; first.remove(); }
     track.style.transform = `translateX(${offset.toFixed(1)}px)`;

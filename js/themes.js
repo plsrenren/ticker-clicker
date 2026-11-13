@@ -39,7 +39,7 @@ TC.themes = (() => {
         next: "Unlocked by riding out a flash crash without selling. Switch any time in Trophies." } },
     { id: "arcade", name: "Arcade CRT", sub: "Insert coin", look: "arcade", cls: ["theme-arcade"], test: (s) => (s.lifetime.taps || 0) >= TAPS,
       hint: (s) => "Tap 100K · " + Math.min(99, Math.floor((s.lifetime.taps || 0) / TAPS * 100)) + "%",
-      font: { data: TERM, display: PIXEL, scale: 1.6, weight: "400" }, load: ['16px "Press Start 2P"', '16px "VT323"'],
+      font: { data: TERM, display: PIXEL, scale: 1.6, displayScale: 0.72, weight: "400" }, load: ['16px "Press Start 2P"', '16px "VT323"'],
       card: { eyebrow: "100,000 taps", name: "Arcade CRT", sub: "Pixel font, scanlines, chiptune sounds and 8-bit coin bursts.",
         next: "Unlocked by tapping 100,000 times. Switch any time in Trophies." } },
     { id: "chalk", name: "Chalkboard", sub: "Chalk on slate", look: "chalk", cls: ["theme-chalk"], test: (s) => Object.keys(s.achievements || {}).length >= achTotal(),

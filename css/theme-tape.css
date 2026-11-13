@@ -74,3 +74,37 @@ html.theme-tape .paper-tape {
 .unlock[data-theme="tape"] .unlock-sub, .unlock[data-theme="tape"] .unlock-next { font-family: "Special Elite", monospace; color: #4a3a28; }
 .unlock[data-theme="tape"] .unlock-btns button { font: 18px "Special Elite", monospace; border-radius: 0; box-shadow: 3px 3px 0 #2b2117; border: 1.5px solid #2b2117; background: #2b2117; color: #f3e9d0; }
 .unlock[data-theme="tape"] .unlock-btns .unlock-later { background: #f3e9d0; color: #2b2117; }
+
+/* ---------- Popups, dip button, desk cards, chips (everything outside the main screen) ---------- */
+html.theme-tape .ipo { background: #ece0c2d9; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+html.theme-tape .ipo.offline { background: #2b211755; }
+html.theme-tape .ipo-card { box-sizing: border-box; padding: 22px 20px; background: #f3e9d0; border-top: 6px double #2b2117; border-bottom: 2px solid #2b2117; box-shadow: 0 16px 40px #2b211755; transform: rotate(-0.5deg); }
+html.theme-tape .ipo-eyebrow { color: var(--muted); font: italic 15px var(--font-display); text-transform: none; letter-spacing: 0.04em; }
+html.theme-tape .ipo-title { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
+html.theme-tape .ipo-field { border: 0; border-bottom: 2px solid #2b2117; border-radius: 0; background: transparent; }
+html.theme-tape .ipo-dollar { color: #2b2117; font-family: var(--font-data); font-weight: 400; }
+html.theme-tape .ipo-input { font-family: var(--font-data); font-weight: 400; color: #2b2117; }
+html.theme-tape .ipo-input::placeholder { color: #cbb88f; }
+html.theme-tape .ipo-go { border-radius: 0; background: #2b2117; color: #f3e9d0; font-family: var(--font-display); letter-spacing: 0.08em; box-shadow: 3px 3px 0 #9a2b1f; }
+html.theme-tape .ipo-go:disabled { background: #cbb88f; color: #7b6750; box-shadow: none; }
+html.theme-tape .off-rows div { border: 0; border-bottom: 1px dashed #7b6750; border-radius: 0; background: transparent; }
+html.theme-tape .dip-btn { border-radius: 0; background: #2f5d36; color: #f3e9d0; border: 2px solid #2b2117; box-shadow: 4px 4px 0 #2b2117; animation: dip-in 0.25s ease-out, tape-dip 1s steps(1) 0.25s infinite; }
+html.theme-tape .dip-word { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.08em; }
+@keyframes tape-dip { 50% { box-shadow: 2px 2px 0 #2b2117; translate: 2px 2px; } }
+html.theme-tape .private-card, html.theme-tape .stake-card { border: 1px solid #2b2117; border-radius: 0; background: transparent; }
+html.theme-tape .private-btn, html.theme-tape .stake-btn { border-radius: 0; border: 1.5px solid #2b2117; background: transparent; color: #2b2117; box-shadow: 2px 2px 0 #2b2117; font-family: var(--font-display); font-weight: 700; }
+html.theme-tape .private-btn:disabled, html.theme-tape .stake-btn:disabled { box-shadow: none; color: #7b6750; border-color: #b9a37a; }
+html.theme-tape .private-bar { border-radius: 0; background: #cbb88f; } html.theme-tape .private-bar i { background: #2b2117; }
+html.theme-tape .private-pts, html.theme-tape .ach-count { color: #2b2117; }
+html.theme-tape .qty { border-radius: 0; border-color: #2b2117; } html.theme-tape .qty button { border-radius: 0; font-family: var(--font-data); }
+html.theme-tape .qty button[aria-pressed="true"] { background: #2b2117; color: #f3e9d0; }
+html.theme-tape .desk-tabs { border-radius: 0; border-color: #2b2117; background: #ece0c2; backdrop-filter: none; }
+html.theme-tape .desk-tabs button { border-radius: 0; }
+html.theme-tape .desk-tabs button[aria-selected="true"] { background: #2b2117; color: #f3e9d0; }
+html.theme-tape .badge, html.theme-tape .tab-badge { border-radius: 0; background: #9a2b1f; color: #f3e9d0; }
+html.theme-tape .debuff-chip { border-radius: 0; background: #9a2b1f; color: #f3e9d0; box-shadow: none; font-family: var(--font-data); }
+html.theme-tape .rsi-chip { border-radius: 0; border-color: #2b2117; font-family: var(--font-data); }
+html.theme-tape .news-meter { border-radius: 0; background: transparent; border: 1px solid #2b2117; }
+html.theme-tape .news-red, html.theme-tape .news-green { box-shadow: none; }
+html.theme-tape .desk-handle span { background: #2b2117; border-radius: 0; }
+html.theme-tape .reset { border-radius: 0; }
